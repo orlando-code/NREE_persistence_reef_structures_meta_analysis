@@ -429,3 +429,35 @@ def extrapolate_df(
     )
     combined_df = combined_df.drop_duplicates(subset=[time_col] + list(groupby_cols))
     return combined_df
+
+
+def calculate_extreme_climatology_values(climatology_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate the extreme climatology values for a dataframe.
+    """
+    min_climatology_df = climatology_df.loc[climatology_df.percentile == "p10"]
+    max_climatology_df = climatology_df.loc[climatology_df.percentile == "p90"]
+    min_t_val, max_t_val = (
+        min_climatology_df["anomaly_value_sst"].min(),
+        max_climatology_df["anomaly_value_sst"].max(),
+    )
+    min_ph_val, max_ph_val = (
+        min_climatology_df["anomaly_value_ph"].min(),
+        max_climatology_df["anomaly_value_ph"].max(),
+    )
+    return min_t_val, max_t_val, min_ph_val, max_ph_val
+
+
+def filter_df_by_extreme_climatologies(
+    df: pd.DataFrame, climatology_df: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Filter a dataframe based on the climatology values.
+    """
+    min_t_val, max_t_val, min_ph_val, max_ph_val = calculate_extreme_climatology_values(
+        climatology_df
+    )
+    # filter by extreme climatologies
+    df = df[(df.delta_t > min_t_val) & (df.delta_t < max_t_val)]
+    df = df[(df.delta_ph > min_ph_val) & (df.delta_ph < max_ph_val)]
+    return df
