@@ -8,3 +8,9 @@ __pycache__/
 api_keys.yaml
 # ignore datasets (may change in future)
 *.xlsx
+
+# hiding data for now
+*.csv
+
+# ignoring resources dir for now
+resources/
