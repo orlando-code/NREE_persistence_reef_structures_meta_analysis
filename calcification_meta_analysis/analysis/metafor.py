@@ -15,21 +15,25 @@ Key Features:
 """
 
 import logging
-import sys
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 import rpy2.robjects as ro
 
-# Add the project root to the path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from calcification_meta_analysis.analysis import (
+    analysis,
+    analysis_utils,
+    meta_regression,
+)  # noqa
+from calcification_meta_analysis.utils import (
+    config,  # noqa
+    r_context_handler,  # noqa
+)
 
-from calcification.analysis import analysis_utils, meta_regression, analysis  # noqa
-from calcification.utils import config  # noqa
-from app.infrastructure import RContextManager  # noqa
+metafor_r = r_context_handler.safe_import_r_package("metafor")
+base_r = r_context_handler.safe_import_r_package("base")
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -155,7 +159,7 @@ class MetaforModel:
 
     def _setup_r_dataframe(self) -> None:
         """Set up R DataFrame using safe context management."""
-        with RContextManager() as r_ctx:
+        with r_context_handler.RContextManager() as r_ctx:
             pandas2ri = r_ctx["pandas2ri"]
 
             # Subset data to required columns
@@ -187,12 +191,10 @@ class MetaforModel:
         """
 
         try:
-            with RContextManager() as r_ctx:
+            with r_context_handler.RContextManager() as r_ctx:
                 ro = r_ctx["ro"]
                 lc = r_ctx["localconverter"]
                 p2ri = r_ctx["pandas2ri"]
-
-                metafor = ro.packages.importr("metafor")
 
                 fit_formula = formula or self.formula
 
@@ -202,7 +204,7 @@ class MetaforModel:
                 # remove points exceeding the cooks distance threshold
 
                 # Fit the model
-                self.r_model = metafor.rma_mv(
+                self.r_model = metafor_r.rma_mv(
                     yi=ro.FloatVector(self.df_r.rx2(self.effect_type)),
                     V=ro.FloatVector(self.df_r.rx2(self.effect_type_var)),
                     data=self.df_r,
@@ -226,7 +228,7 @@ class MetaforModel:
                     ]
 
                     # re-fit model
-                    self.r_model = metafor.rma_mv(
+                    self.r_model = metafor_r.rma_mv(
                         yi=ro.FloatVector(self.df_r.rx2(self.effect_type)),
                         V=ro.FloatVector(self.df_r.rx2(self.effect_type_var)),
                         data=self.df_r,
@@ -277,15 +279,14 @@ class MetaforModel:
 
     def calculate_cooks_distance(self, progbar=True, parallel="multicore", ncpus=24):
         """Calculate Cook's distance for the fitted model using metafor's cooks.distance function."""
-        with RContextManager() as r_ctx:
-            ro = r_ctx["ro"]
-            metafor = ro.packages.importr("metafor")
+        with r_context_handler.RContextManager() as r_ctx:
+            metafor_r = r_context_handler.safe_import_r_package("metafor")
 
             # Get native R model
             r_model_native = self._get_native_r_model(r_ctx)
 
             # Calculate Cook's distance with the native R model
-            cooks = metafor.cooks_distance_rma_mv(
+            cooks = metafor_r.cooks_distance_rma_mv(
                 r_model_native, progbar=progbar, parallel=parallel, ncpus=ncpus
             )
 
@@ -296,16 +297,14 @@ class MetaforModel:
     def cooks_distance_exclusion(self, r_model, df_processed):
         """Remove points exceeding the cooks distance threshold."""
         # use native metafor cooks distance function
-        with RContextManager() as r_ctx:
+        with r_context_handler.RContextManager() as r_ctx:
             ro = r_ctx["ro"]
             lc = r_ctx["localconverter"]
-            p2ri = r_ctx["pandas2ri"]
-            metafor = ro.packages.importr("metafor")
+            metafor_r = r_context_handler.safe_import_r_package("metafor")
 
             with lc(ro.default_converter):
-                r_df = ro.conversion.py2rpy(df_processed)
                 # This would need to be implemented based on your filtering logic
-                return metafor.cooks_distance_filter(r_model, df_processed)
+                return metafor_r.cooks_distance_filter(r_model, df_processed)
 
     def _extract_model_components(self) -> None:
         """Extract model components into Python-friendly format."""
@@ -1007,7 +1006,7 @@ def extract_coefficient_names_from_model(model: ro.vectors.ListVector) -> list[s
     """Extract coefficient names from the model formula and structure."""
     try:
         # Method 1: get from call attribute via context handler
-        with RContextManager() as r_ctx:
+        with r_context_handler.RContextManager() as r_ctx:
             ro = r_ctx["ro"]
             ro.globalenv["cl"] = model["call"]
             labels = ro.r(
@@ -1029,7 +1028,7 @@ def predict_with_metafor(
     confidence_level: float = 95,
 ) -> pd.DataFrame:
     """Internal prediction method using safe R context."""
-    with RContextManager() as r_ctx:
+    with r_context_handler.RContextManager() as r_ctx:
         ro = r_ctx["ro"]
         lc = r_ctx["localconverter"]
         p2ri = r_ctx["pandas2ri"]

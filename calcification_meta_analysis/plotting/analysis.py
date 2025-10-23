@@ -11,7 +11,6 @@ import seaborn as sns
 from matplotlib.colorbar import ColorbarBase
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.lines import Line2D
-from rpy2.robjects.packages import importr
 
 # stats
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -29,11 +28,11 @@ from calcification_meta_analysis.analysis import (
 )
 from calcification_meta_analysis.plotting import plot_config, plot_utils
 from calcification_meta_analysis.processing import climatology as climatology_processing
-from calcification_meta_analysis.utils import config
+from calcification_meta_analysis.utils import config, r_context_handler
 
 # R
-metafor = importr("metafor")
-grdevices = importr("grDevices")
+metafor_r = r_context_handler.safe_import_r_package("metafor")
+grdevices_r = r_context_handler.safe_import_r_package("grDevices")
 
 
 @dataclass
@@ -773,12 +772,12 @@ def plot_funnel_from_model(
 
         # Create the plot in R and save to file with high resolution
         # Multiply dimensions by 3 and use high DPI for better quality
-        grdevices.png(
+        grdevices_r.png(
             temp_filename, width=figsize[0], height=figsize[1], units="in", res=300
         )
 
         # Call metafor's funnel function with the provided parameters
-        metafor.funnel(
+        metafor_r.funnel(
             x=model,
             main=ro.NULL if main is None else main,
             shade=r_shade,
@@ -796,7 +795,7 @@ def plot_funnel_from_model(
             # ylim=ro.NULL if ylim is None else ro.FloatVector(ylim)
         )
 
-        grdevices.dev_off()
+        grdevices_r.dev_off()
 
         # Display the plot in Python
         fig, ax = plt.subplots(figsize=figsize, dpi=300)
@@ -817,7 +816,7 @@ def plot_funnel_from_model(
         return fig, ax
     else:
         # Call metafor's funnel function with the provided parameters
-        metafor.funnel(
+        metafor_r.funnel(
             x=model,
             main=ro.NULL if main is None else main,
             shade=r_shade,
@@ -836,10 +835,10 @@ def plot_funnel_from_model(
         # save the plot to a file if save_path is provided
         if save_path:
             # Use higher resolution settings
-            grdevices.png(
+            grdevices_r.png(
                 str(save_path), width=figsize[0], height=figsize[1], units="in", res=300
             )
-            metafor.funnel(
+            metafor_r.funnel(
                 x=model,
                 main=ro.NULL if main is None else main,
                 shade=r_shade,
@@ -856,7 +855,7 @@ def plot_funnel_from_model(
                 xlim=ro.NULL if xlim is None else ro.FloatVector(xlim),
                 # ylim=ro.NULL if ylim is None else ro.FloatVector(ylim)
             )
-            grdevices.dev_off()
+            grdevices_r.dev_off()
             plt.close()
 
         return None

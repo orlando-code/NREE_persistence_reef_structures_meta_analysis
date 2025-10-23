@@ -8,15 +8,14 @@ import rpy2.robjects as ro
 from rpy2.robjects import pandas2ri
 
 # --- metafor ---
-from rpy2.robjects.packages import importr
 from tqdm.auto import tqdm
 
 from calcification_meta_analysis.analysis import analysis_utils
 from calcification_meta_analysis.analysis import metafor as metafor_py
-from calcification_meta_analysis.utils import config
+from calcification_meta_analysis.utils import config, r_context_handler
 
-metafor_r = importr("metafor")
-base_r = importr("base")
+metafor_r = r_context_handler.safe_import_r_package("metafor")
+base_r = r_context_handler.safe_import_r_package("base")
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

@@ -1,19 +1,18 @@
 # general
-
 import numpy as np
 import pandas as pd
 
-# R
-import rpy2.robjects.packages as rpackages
-
 # stats
 import statsmodels.api as sm
+from matplotlib.legend_handler import HandlerBase
+from scipy.stats import norm
 from tqdm.auto import tqdm
 
-# custom
+from calcification_meta_analysis.plotting import plot_config
+from calcification_meta_analysis.utils import r_context_handler
 
-metafor = rpackages.importr("metafor")
-base = rpackages.importr("base")
+metafor = r_context_handler.safe_import_r_package("metafor")
+base = r_context_handler.safe_import_r_package("base")
 
 
 # --- core analysis calculations ---
@@ -291,6 +290,12 @@ def calculate_effect_for_df(df: pd.DataFrame) -> pd.DataFrame:
     # group by relevant factors and apply processing
     grouped_data = []
 
+    # remove any rows with n=1
+    n_1_rows = result_df[result_df["n"] == 1].shape[0]
+    row_str = "row" if n_1_rows == 1 else "rows"
+    print(f"Removing {n_1_rows} {row_str} with n=1")
+    result_df = result_df[result_df["n"] != 1]
+
     doi_bar = tqdm(result_df.doi.unique())
     for doi in doi_bar:
         doi_bar.set_description(f"Calculating effect sizes for {doi}")
@@ -377,9 +382,8 @@ def calculate_row_effect(df: pd.DataFrame) -> pd.DataFrame:
     control_df = df[df["treatment"] == "control"]
     if control_df.empty:
         print(
-            f"Control dataframe is empty for doi {df.doi.iloc[0]}. Consider assigning manually"
+            f"Control dataframe is empty for DOI: {df.doi.iloc[0]}. Consider assigning manually (currently losing {df.shape[0]} rows)"
         )
-        print("losing", df.shape[0], "rows")
         return None
     control_series = calculate_control_values(control_df)
     # calculate effect size for each row in treatment_df and create a list of results
@@ -552,25 +556,6 @@ def calc_treatment_effect_for_row(
     return row_copy
 
 
-import pandas as pd
-from matplotlib.legend_handler import HandlerBase
-from scipy.stats import norm
-
-from calcification_meta_analysis.plotting import plot_config
-
-# ----------------------
-# helper function
-# ----------------------
-# def mean_ci(data, confidence=0.95):
-#     """Calculate the mean, confidence interval, and significance."""
-#     data = np.array(data, dtype=float)
-#     n = len(data)
-#     mean = np.mean(data)
-#     se = st.sem(data)  # standard error of the mean
-#     h = se * st.t.ppf((1 + confidence) / 2.0, n - 1)
-#     return mean, mean - h, mean + h
-
-
 def weighted_mean_ci(x, meas_se, mu0=0.0, alpha=0.05):
     """Calculate the weighted mean, confidence interval, and significance level from data using inverse of variance as weights.
 
@@ -675,7 +660,7 @@ class HandlerStars(HandlerBase):
         # cast to float if safe
         try:
             label = float(label)
-        except:
+        except ValueError:
             pass
         # invert mapping
         label = {v: k for k, v in plot_config.SIGNIFICANCE_MAPPING.items()}[label]
