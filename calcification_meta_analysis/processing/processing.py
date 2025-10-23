@@ -433,7 +433,7 @@ def assign_treatment_groups_multilevel(
 
     # Group by relevant factors to process in chunks
     groupby_cols = ["doi", "irr_group", "species_types"]
-    for (study_doi, irr_group, species), group_df in tqdm(
+    for (_, irr_group, _), group_df in tqdm(
         result_df.groupby(groupby_cols, dropna=False),
         desc="Assigning treatment groups",
         total=result_df.groupby(groupby_cols, dropna=False).ngroups,
@@ -497,7 +497,6 @@ def assign_treatment_groups_multilevel(
     result_df["treatment"] = np.select(conditions, choices, default="unknown")
     # Replace 'unknown' with np.nan after the select operation
     result_df.loc[result_df["treatment"] == "unknown", "treatment"] = np.nan
-
     return result_df
 
 
