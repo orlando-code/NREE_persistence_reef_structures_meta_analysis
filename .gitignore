@@ -1,0 +1,7 @@
+# ignore macos system files
+.DS_Store
+
+# ignore private data
+api_keys.yaml
+# ignore datasets (may change in future)
+*.xlsx
