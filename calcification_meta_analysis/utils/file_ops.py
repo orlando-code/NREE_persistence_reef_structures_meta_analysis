@@ -7,8 +7,6 @@ import numpy as np
 import pandas as pd
 
 # R
-import rpy2
-import rpy2.robjects.packages as rpackages
 import yaml
 from openpyxl import load_workbook
 
@@ -66,14 +64,6 @@ def append_to_yaml(data: dict, fp="unnamed.yaml") -> None:
     converted_data = _convert_numpy(data)
     with open(fp, "a") as file:
         yaml.dump(converted_data, file)
-
-
-def ensure_r_package_imported(package_name: str) -> None:
-    """Ensure that an R package is imported using rpy2"""
-    try:
-        rpackages.importr(package_name)
-    except rpy2.robjects.packages.PackageNotFoundError:
-        rpackages.importr(package_name)
 
 
 def get_now_timestamp_formatted():
