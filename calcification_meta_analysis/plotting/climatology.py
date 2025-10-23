@@ -732,10 +732,14 @@ def plot_extreme_climatology_values(
 def format_axes(axes: list[plt.Axes], settings: list[dict]) -> None:
     """
     Format the axes of the plot.    # TODO: make this into a standard plot config
-    """
-    # Flatten axes if needed and broadcast settings
-    import numpy as np
 
+    Args:
+        axes (list[plt.Axes]): List of axes to format
+        settings (list[dict]): List of settings with which to format the axes
+
+    Returns:
+        None
+    """
     axes_flat = np.atleast_1d(axes).flatten()
     if isinstance(settings, dict):
         settings_list = [settings] * len(axes_flat)
