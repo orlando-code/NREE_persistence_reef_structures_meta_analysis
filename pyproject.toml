@@ -4,23 +4,28 @@ build-backend = "hatchling.build"
 
 [project]
 name = "calcification_meta_analysis"
+description = "Code accompaniment for the meta-analysis of calcification rates in the NREE paper 'Persistence of Coral Reef Structures into the 21st Century'"
 version = "0.0.1"
 authors = [
     { name="Orlando Timmerman", email="rt582@cam.ac.uk" }
 ]
-description = "Code accompaniment for the meta-analysis of calcification rates in the NREE paper 'Persistence of Coral Reef Structures into the 21st Century'"
+
+maintainers = [
+    { name="Orlando Timmerman", email="rt582@cam.ac.uk" }
+]
+
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE.md"]
+license-files = ["LICENSE"]
 packages = ["calcification_meta_analysis"]
-classifiers = []
+
 requires-python = ">=3.11"
 dependencies = [
     "pandas >= 2.1.1",
     "numpy >= 2.0.3",
     "matplotlib >= 3.9.3",
 ]
-maintainers = [
-    { name="Orlando Timmerman", email="rt582@cam.ac.uk"] }
-]
+
+repository = "https://github.com/orlando-code/NREE_persistence_reef_structures_meta_analysis/"
+documentation = "https://github.com/orlando-code/NREE_persistence_reef_structures_meta_analysis/README.md"
 

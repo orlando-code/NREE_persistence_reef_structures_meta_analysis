@@ -3,14 +3,14 @@ from typing import Optional
 
 import pandas as pd
 
-from calcification.analysis import analysis
-from calcification.processing import (
+from calcification_meta_analysis.analysis import analysis
+from calcification_meta_analysis.processing import (
     carbonate_processing,
     climatology,
     groups_processing,
     processing,
 )
-from calcification.utils import config
+from calcification_meta_analysis.utils import config
 
 logging.basicConfig(level=logging.INFO)
 

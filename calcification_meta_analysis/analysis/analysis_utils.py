@@ -7,7 +7,7 @@ import statsmodels.api as sm
 from scipy.interpolate import make_interp_spline
 from scipy.stats import median_abs_deviation
 
-from calcification.utils import config, file_ops
+from calcification_meta_analysis.utils import config, file_ops
 
 
 def preprocess_df_for_meta_model(

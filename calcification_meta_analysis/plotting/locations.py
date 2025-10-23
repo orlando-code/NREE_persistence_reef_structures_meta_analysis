@@ -4,8 +4,8 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from calcification.plotting import plot_utils
-from calcification.utils import config
+from calcification_meta_analysis.plotting import plot_utils
+from calcification_meta_analysis.utils import config
 
 
 def plot_areas_with_study_locations(

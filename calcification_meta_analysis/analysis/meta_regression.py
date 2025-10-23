@@ -1,7 +1,5 @@
 import logging
 import os
-import sys
-from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -13,16 +11,12 @@ from rpy2.robjects import pandas2ri
 from rpy2.robjects.packages import importr
 from tqdm.auto import tqdm
 
-from calcification.analysis import analysis_utils
-from calcification.utils import config
+from calcification_meta_analysis.analysis import analysis_utils
+from calcification_meta_analysis.analysis import metafor as metafor_py
+from calcification_meta_analysis.utils import config
 
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-from app import metafor as metafor_app  # noqa
-
-metafor = importr("metafor")
-base = importr("base")
+metafor_r = importr("metafor")
+base_r = importr("base")
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -139,14 +133,14 @@ class MetaforModel:
     def fit_model(self):
         """Fit the metafor model using rpy2."""
         logging.info(f"Fitting metafor model with formula: {self.formula}")
-        self.model = metafor.rma_mv(
+        self.model = metafor_r.rma_mv(
             yi=ro.FloatVector(self.df_r.rx2(self.effect_type)),
             V=ro.FloatVector(self.df_r.rx2(self.effect_type_var)),
             data=self.df_r,
             mods=ro.Formula(self.formula),
             random=ro.Formula(self.random),
         )
-        self.summary = base.summary(self.model)
+        self.summary = base_r.summary(self.model)
         self.fitted = True
         self.save_summary() if self.save_summary else None
         logger.info("Model fitting complete.")
@@ -273,7 +267,7 @@ def _build_newmods_matrix(
     Returns:
     """
 
-    all_mods = metafor_app.extract_coefficient_names_from_model(model)
+    all_mods = metafor_py.extract_coefficient_names_from_model(model)
     X_means = np.array(ro.r("colMeans")(model.rx2("X.f")))
     Xnew = np.tile(X_means, (npoints, 1))
     for i, mod in enumerate(mods_to_change):
@@ -415,7 +409,7 @@ def predict_nd_surface_from_model(
         meshgrids (list[np.ndarray]): list of meshgrid arrays for each moderator (for plotting).
     """
     # get all moderator names and indices for those to vary
-    all_mods = metafor_app.extract_coefficient_names_from_model(model)
+    all_mods = metafor_py.extract_coefficient_names_from_model(model)
     coefs = np.array(model.rx2("beta"))
     moderator_indices = [all_mods.index(mod) for mod in moderator_names]
 
@@ -765,6 +759,7 @@ class DredgeAnalysis:
         """
         Get the formula for a given model from the dredge results.
         """
+        return self.results.iloc[row_index]["formula"]
 
     def summarize_results(self) -> dict:
         """
@@ -973,306 +968,3 @@ def run_parallel_dredge(
     df = ro.pandas2ri.rpy2py(dredge_result)
     # assign any values of '-2147483648' to NaN (R's placeholder for NA in string columns)
     return df.replace(-2147483648, np.nan)
-
-
-# def predict_metafor_model_on_moderator_values(
-#     model, moderator_vals: pd.DataFrame
-# ) -> pd.DataFrame:
-#     """
-#     Provide a model with a dataframe (same dimensions as model X) of moderator values to get model predictions.
-#     """
-#     # convert to R matrix (moderator_vals)
-#     moderator_vals_np = np.array(moderator_vals, dtype=float)
-#     moderator_vals_r = ro.r.matrix(
-#         ro.FloatVector(moderator_vals_np.flatten()),
-#         nrow=moderator_vals_np.shape[0],
-#         byrow=True,
-#     )
-
-#     # predict all at once in R
-#     predictions_r = ro.r("predict")(model, newmods=moderator_vals_r, digits=2)
-
-#     r_selected_columns = ro.r(
-#         "as.data.frame"
-#     )(
-#         predictions_r
-#     ).rx(
-#         True, ro.IntVector([1, 2, 3, 4, 5, 6])
-#     )  # select columns to avoid heterogenous shape. TODO: surely this should be dynamic?
-#     ro.pandas2ri.activate()
-
-#     # convert the selected columns to a pandas dataframe
-#     with (ro.default_converter + ro.pandas2ri.converter).context():
-#         return (
-#             ro.conversion.get_conversion()
-#             .rpy2py(r_selected_columns)
-#             .reset_index(drop=True)
-#         )
-
-
-# def process_meta_regplot_data(model, model_comps, x_mod, level, point_size, predlim):
-#     """
-#     Process data for meta-regression plotting.
-
-#     Args:
-#         model (rpy2.robjects.vectors.ListVector): An R rma.mv or rma model object from metafor package.
-#         model_comps (tuple): Model components containing predictor and response info.
-#         x_mod (str): Name of the moderator variable to plot on x-axis.
-#         level (float): Confidence level for intervals in percent.
-#         point_size (str or array-like): Point sizes - either "seinv" (inverse of standard error),
-#             "vinv" (inverse of variance), or an array of custom sizes.
-#         predlim (tuple[float, float], optional): Limits for predicted x-axis values (min, max).
-
-#     Returns:
-#         tuple: Containing processed data (xi, yi, vi, norm_weights, xs, pred, ci_lb, ci_ub,
-#                 pred_lb, pred_ub, mod_pos)
-#     """
-#     pandas2ri.activate()
-#     mod_pos = get_moderator_index(model_comps, x_mod)
-#     yi, vi, xi = _extract_model_components(model, mod_pos)
-#     norm_weights = _compute_point_weights(vi, point_size, yi)
-#     xs, predlim = _get_xs_and_prediction_limits(xi, predlim)
-#     predict_function = _get_predict_function()
-#     pred, ci_lb, ci_ub, pred_lb, pred_ub = _metafor_prediction_from_model(
-#         model, predict_function, xs, mod_pos, level
-#     )
-#     return xi, yi, vi, norm_weights, xs, pred, ci_lb, ci_ub, pred_lb, pred_ub, mod_pos
-
-
-# def process_df_for_r(df: pd.DataFrame) -> pd.DataFrame:
-#     """
-#     Processes a pandas DataFrame by converting columns to floats if possible,
-#     otherwise keeping them as their original type.
-
-#     Parameters:
-#         df (pd.DataFrame): The input DataFrame to process.
-
-#     Returns:
-#         pd.DataFrame: The processed DataFrame with updated column types.
-#     """
-#     df_copy = df.copy()
-#     for col in df_copy.columns:
-#         # Only convert columns that are predominantly numeric
-#         if pd.to_numeric(df_copy[col], errors="coerce").notna().sum() > 0.5 * len(
-#             df_copy
-#         ):
-#             df_copy[col] = pd.to_numeric(df_copy[col], errors="coerce")
-
-#     return df_copy
-
-
-# def run_metafor_mv(
-#     df: pd.DataFrame,
-#     effect_type: str = "hedges_g",
-#     effect_type_var: str = None,
-#     treatment: str = None,
-#     necessary_vars: list[str] = None,
-#     formula: str = None,
-# ) -> tuple[ro.vectors.DataFrame, ro.vectors.DataFrame, pd.DataFrame]:
-#     """
-#     Run the metafor model on the given dataframe.
-
-#     Args:
-#         df (pd.DataFrame): The dataframe to run the model on.
-#         effect_type (str): The type of effect to use.
-#         treatment (str): The treatment to use.
-#         necessary_vars (list[str]): The necessary variables to use.
-#         formula (str): The formula to use.
-
-#     Returns:
-#         ro.vectors.DataFrame: The results of the metafor model.
-#     """
-#     effect_type_var = effect_type_var or f"{effect_type}_var"
-#     # preprocess the dataframe
-#     formula, df = analysis_utils.preprocess_df_for_meta_model(
-#         df, effect_type, effect_type_var, treatment, formula, necessary_vars
-#     )
-#     print(f"Using formula {formula}")
-#     # activate R conversion
-#     ro.pandas2ri.activate()
-
-#     formula_components = analysis_utils.get_formula_components(formula)
-#     all_necessary_vars = (
-#         ["original_doi", "ID"]
-#         + (necessary_vars or [])
-#         + [effect_type, effect_type_var]
-#         + formula_components["predictors"]
-#     )
-#     # ensure original_doi is string type to avoid conversion issues
-#     df = df.copy()
-#     df["original_doi"] = df["original_doi"].astype(str)
-
-#     df_subset = df[
-#         [necessary_var for necessary_var in all_necessary_vars if necessary_var != "1"]
-#     ]
-#     df_r = ro.pandas2ri.py2rpy(df_subset)
-
-#     # run the metafor model
-#     print("\nRunning metafor model...")
-#     model = metafor.rma_mv(
-#         yi=ro.FloatVector(df_r.rx2(effect_type)),
-#         V=ro.FloatVector(df_r.rx2(effect_type_var)),
-#         data=df_r,
-#         mods=ro.Formula(formula),
-#         random=ro.Formula("~ 1 | original_doi/ID"),
-#     )
-#     print("Model fitting complete.")
-#     return model, base.summary(model), formula, df
-
-
-# # Backwards compatibility functions using the new class
-# def run_parallel_dredge(
-#     df: pd.DataFrame,
-#     global_formula: Optional[str] = None,
-#     effect_type: str = "hedges_g",
-#     x_var: str = "temp",
-#     n_cores: int = 16,
-# ) -> pd.DataFrame:
-#     """
-#     Run a parallel dredge analysis using MuMIn in R.
-
-#     This is a wrapper around DredgeAnalysis for backwards compatibility.
-#     """
-#     config = DredgeConfig(
-#         effect_type=effect_type,
-#         x_var=x_var,
-#         n_cores=n_cores,
-#         global_formula=global_formula,
-#     )
-#     dredge = DredgeAnalysis(df, config)
-#     return dredge.run_parallel()
-
-
-# def run_simple_dredge(
-#     df: pd.DataFrame,
-#     global_formula: Optional[str] = None,
-#     effect_type: str = "hedges_g",
-#     x_var: str = "temp",
-# ) -> pd.DataFrame:
-#     """
-#     Run a simple dredge analysis (fallback without parallel processing).
-
-#     This is a wrapper around DredgeAnalysis for backwards compatibility.
-#     """
-#     config = DredgeConfig(
-#         effect_type=effect_type, x_var=x_var, global_formula=global_formula
-#     )
-#     dredge = DredgeAnalysis(df, config)
-#     return dredge.run_simple()
-
-
-# # Remove the old helper functions since they're now part of the class
-# def _setup_r_environment(df: pd.DataFrame, effect_type: str, formula: str) -> None:
-#     """Deprecated: Use DredgeAnalysis class instead."""
-#     logger.warning(
-#         "_setup_r_environment is deprecated. Use DredgeAnalysis class instead."
-#     )
-
-
-# def _create_global_model() -> None:
-#     """Deprecated: Use DredgeAnalysis class instead."""
-#     logger.warning(
-#         "_create_global_model is deprecated. Use DredgeAnalysis class instead."
-#     )
-
-
-# def _run_parallel_dredge_analysis(n_cores: int) -> None:
-#     """Deprecated: Use DredgeAnalysis class instead."""
-#     logger.warning(
-#         "_run_parallel_dredge_analysis is deprecated. Use DredgeAnalysis class instead."
-#     )
-
-
-# def _run_simple_dredge_analysis() -> None:
-#     """Deprecated: Use DredgeAnalysis class instead."""
-#     logger.warning(
-#         "_run_simple_dredge_analysis is deprecated. Use DredgeAnalysis class instead."
-#     )
-
-
-# def _convert_r_results_to_pandas() -> pd.DataFrame:
-#     """Deprecated: Use DredgeAnalysis class instead."""
-#     logger.warning(
-#         "_convert_r_results_to_pandas is deprecated. Use DredgeAnalysis class instead."
-#     )
-#     return pd.DataFrame()
-
-
-# def _generate_dredge_formula(
-#     effect_type: str, x_var: str, global_formula: Optional[str]
-# ) -> str:
-#     """Deprecated: Use DredgeAnalysis class instead."""
-#     logger.warning(
-#         "_generate_dredge_formula is deprecated. Use DredgeAnalysis class instead."
-#     )
-#     if global_formula is None:
-#         return f"{effect_type} ~ {x_var} - 1"
-#     return global_formula
-
-
-# def _metafor_predict_function() -> ro.r.function:
-#     # def _metafor_predict_function(model, r_xs, moderator_index, level) -> ro.r.function:
-#     """Return the R function for prediction.
-
-#     Args:
-#         model: The fitted metafor model.
-#         xs: The values of the moderator to predict on.
-#         moderator_index: The index of the moderator in the model.
-#         level: The confidence level for the prediction intervals e.g. 95 for 95% CI.
-
-#     Returns:
-#         The R function for prediction.
-#     """
-#     return ro.r("""
-#     function(model, r_xs, moderator_index, level) {
-#         # Get mean values for all predictors
-#         X_means <- colMeans(model$X.f)
-#         # Create new data for predictions
-#         Xnew <- matrix(rep(X_means, each=length(r_xs)), nrow=length(r_xs))
-#         colnames(Xnew) <- colnames(model$X.f)
-#         # Set the moderator of interest to the sequence of values
-#         Xnew[,moderator_index] <- r_xs
-#         # Remove intercept if present in the model
-#         if (model$int.incl) {
-#             Xnew <- Xnew[,-1, drop=FALSE]
-#         }
-#         # Make predictions
-#         pred <- predict(model, newmods=Xnew, level=(level/100))
-#         # Return results
-#         return(pred)
-#     }
-#     """)
-
-
-# def _metafor_prediction_from_model(
-#     model, moderator_name, xs: np.ndarray = None, confidence_level: float = 95
-# ):
-#     """DEPRECATED: Use metafor_predict_from_model instead."""
-#     import warnings
-
-#     warnings.warn(
-#         "_metafor_prediction_from_model is deprecated. Use metafor_predict_from_model instead."
-#     )
-#     # Backward compatibility: only works for a single moderator
-#     if xs is None:
-#         xs, _, _ = plot_analysis.MetaRegressionResults(
-#             model, moderator_name
-#         )._get_basic_model_data_for_moderator()
-#     moderator_index = plot_analysis.MetaRegressionResults(
-#         model, moderator_name
-#     ).moderator_index
-#     r_xs = ro.FloatVector(xs)
-#     predict_function = _metafor_predict_function()
-#     try:
-#         pred_res = predict_function(
-#             model, r_xs, moderator_index + 1, confidence_level
-#         )  # R is 1-indexed
-#         pred = np.array(pred_res.rx2("pred"))
-#         ci_lb = np.array(pred_res.rx2("ci.lb"))
-#         ci_ub = np.array(pred_res.rx2("ci.ub"))
-#         pred_lb = np.array(pred_res.rx2("pi.lb"))
-#         pred_ub = np.array(pred_res.rx2("pi.ub"))
-#         return pred, ci_lb, ci_ub, pred_lb, pred_ub
-#     except Exception as e:
-#         print(f"Error in prediction: {e}")
-#         return None, None, None, None, None

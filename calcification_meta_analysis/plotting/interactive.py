@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
 
-from calcification.plotting import analysis
+from calcification_meta_analysis.plotting import analysis
 
 
 def meta_regplot_plotly(

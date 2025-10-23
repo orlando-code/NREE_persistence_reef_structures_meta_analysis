@@ -8,7 +8,7 @@ import numpy as np
 # R
 from scipy import interpolate
 
-from calcification.utils import config, utils
+from calcification_meta_analysis.utils import config, utils
 
 
 def save_fig(

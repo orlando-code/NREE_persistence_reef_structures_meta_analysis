@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
-from calcification.utils import config, file_ops, utils
+from calcification_meta_analysis.utils import config, file_ops, utils
 
 logger = logging.getLogger(__name__)
 

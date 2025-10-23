@@ -7,7 +7,7 @@ import pandas as pd
 from scipy import interpolate
 from tqdm.auto import tqdm
 
-from calcification.utils import file_ops
+from calcification_meta_analysis.utils import file_ops
 
 logger = logging.getLogger(__name__)
 

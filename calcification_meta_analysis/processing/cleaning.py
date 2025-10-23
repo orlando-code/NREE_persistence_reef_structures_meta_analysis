@@ -5,8 +5,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from calcification.processing import locations, taxonomy, units
-from calcification.utils import config, file_ops, utils
+from calcification_meta_analysis.processing import locations, taxonomy, units
+from calcification_meta_analysis.utils import config, file_ops, utils
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

@@ -22,10 +22,14 @@ from sklearn.gaussian_process.kernels import (
 )
 
 # custom
-from calcification.analysis import analysis, analysis_utils, meta_regression
-from calcification.plotting import plot_config, plot_utils
-from calcification.processing import climatology as climatology_processing
-from calcification.utils import config
+from calcification_meta_analysis.analysis import (
+    analysis,
+    analysis_utils,
+    meta_regression,
+)
+from calcification_meta_analysis.plotting import plot_config, plot_utils
+from calcification_meta_analysis.processing import climatology as climatology_processing
+from calcification_meta_analysis.utils import config
 
 # R
 metafor = importr("metafor")
@@ -1946,7 +1950,7 @@ class BurningEmbersPlotter:
         ssp_values = []
         ssp_labels = []
 
-        from calcification.plotting import plot_config
+        from calcification_meta_analysis.plotting import plot_config
 
         for ssp in sorted(unique_scenarios):
             # Get forcing value at 2100 for this scenario

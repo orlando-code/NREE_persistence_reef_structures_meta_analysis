@@ -5,8 +5,8 @@ Script to prepare calcification data for R meta-analysis
 
 import argparse
 
-from calcification.processing import process
-from calcification.utils import config
+from calcification_meta_analysis.processing import process
+from calcification_meta_analysis.utils import config
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--output_filename", type=str, default="analysis_ready_data.csv")

@@ -7,7 +7,7 @@ import seaborn as sns
 from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from calcification.plotting import plot_config
+from calcification_meta_analysis.plotting import plot_config
 
 
 def plot_study_timeseries(

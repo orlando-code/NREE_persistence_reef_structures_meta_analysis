@@ -13,8 +13,8 @@ import yaml
 from openpyxl import load_workbook
 
 # custom
-from calcification.processing import carbonate_processing
-from calcification.utils import config
+from calcification_meta_analysis.processing import carbonate_processing
+from calcification_meta_analysis.utils import config
 
 
 def _convert_numpy(obj) -> dict | list | np.ndarray | float | int | str:

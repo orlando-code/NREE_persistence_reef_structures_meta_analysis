@@ -556,7 +556,7 @@ import pandas as pd
 from matplotlib.legend_handler import HandlerBase
 from scipy.stats import norm
 
-from calcification.plotting import plot_config
+from calcification_meta_analysis.plotting import plot_config
 
 # ----------------------
 # helper function
