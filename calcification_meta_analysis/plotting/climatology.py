@@ -8,6 +8,7 @@ import seaborn as sns
 from matplotlib import gridspec
 
 from calcification_meta_analysis.plotting import plot_config, plot_utils
+from calcification_meta_analysis.processing import climatology as climatology_processing
 
 
 def plot_spatial_effect_distribution(
@@ -623,3 +624,128 @@ def plot_global_timeseries(
     )
 
     return fig, axes
+
+
+def plot_extreme_climatology_values(
+    data_df: pd.DataFrame,
+    climatology_df: pd.DataFrame,
+    figsize: tuple[float, float] = (8, 6),
+    dpi: int = 300,
+) -> tuple[matplotlib.figure.Figure, np.ndarray]:
+    """
+    Plot histogram distributions of temperature and pH anomalies together with vertical
+    lines indicating extreme climatology values. Shade area above max temp and below min pH.
+    """
+    # extract extreme climatology values concisely
+    min_t, max_t, min_ph, max_ph = (
+        climatology_processing.calculate_extreme_climatology_values(climatology_df)
+    )
+    fig, axes = plt.subplots(2, 1, figsize=figsize, dpi=dpi, sharex=False)
+    plot_settings = [
+        {
+            "data": data_df["delta_t"],
+            "xlabel": r"Temperature anomaly ($\Delta$SST, °C)",
+            "vlines": [
+                (min_t, "minimum SST", plt.cm.Reds_r(0)),
+                (max_t, "maximum SST", plt.cm.Reds_r(1)),
+            ],
+            "title": "Temperature anomaly distribution",
+            "shade_type": "above",  # for temp, shade above max_t
+        },
+        {
+            "data": data_df["delta_ph"],
+            "xlabel": r"pH anomaly ($\Delta$pH)",
+            "vlines": [
+                (min_ph, "minimum pH", plt.cm.Reds_r(0)),
+                (max_ph, "maximum pH", plt.cm.Reds_r(1)),
+            ],
+            "title": "pH anomaly distribution",
+            "shade_type": "below",  # for pH, shade below min_ph
+        },
+    ]
+
+    for ax, settings in zip(axes, plot_settings):
+        ax.hist(
+            settings["data"].dropna(),
+            bins=25,
+            color="#7593af",
+            edgecolor="white",
+            alpha=0.8,
+            label="Effect sizes",
+        )
+        ymax = ax.get_ylim()[1]
+        min_x = ax.get_xlim()[0]
+        max_x = ax.get_xlim()[1]
+        # Shade region above max temp or below min pH depending on axis
+        for x, name, color in settings["vlines"]:
+            ax.axvline(
+                x,
+                0,
+                ymax,
+                color=color,
+                linestyle="--",
+                linewidth=2,
+                label=f"{name}: {x:.2f}",
+                zorder=10,
+            )
+        if settings["shade_type"] == "above":
+            # Shade area above max_t
+            ax.axvspan(
+                settings["vlines"][1][0],
+                ax.get_xlim()[1],
+                ymin=0,
+                ymax=1,
+                color="lightgrey",
+                alpha=0.4,
+                zorder=0,
+                label="_nolegend_",
+            )
+        elif settings["shade_type"] == "below":
+            # Shade area below min_ph
+            ax.axvspan(
+                ax.get_xlim()[0],
+                settings["vlines"][0][0],
+                ymin=0,
+                ymax=1,
+                color="lightgrey",
+                alpha=0.4,
+                zorder=0,
+                label="_nolegend_",
+            )
+
+        ax.set_xlim(min_x, max_x)
+        ax.set_ylim(0, ymax * 1.05 if ymax > 0 else 1)
+        ax.legend(frameon=False, fontsize=8)
+
+    format_axes(axes, settings)
+
+    plt.tight_layout(h_pad=2)
+    fig.suptitle(
+        "Extreme climatology values and observed anomaly distributions",
+        fontsize=13,
+        y=1.04,
+        fontweight="bold",
+    )
+    return fig, axes
+
+
+def format_axes(axes: list[plt.Axes], settings: list[dict]) -> None:
+    """
+    Format the axes of the plot.    # TODO: make this into a standard plot config
+    """
+    # Flatten axes if needed and broadcast settings
+    import numpy as np
+
+    axes_flat = np.atleast_1d(axes).flatten()
+    if isinstance(settings, dict):
+        settings_list = [settings] * len(axes_flat)
+    else:
+        settings_list = settings
+
+    for ax, setting in zip(axes_flat, settings_list):
+        ax.set_xlabel(setting["xlabel"], fontsize=10)
+        ax.set_ylabel("Count", fontsize=10)
+        ax.set_title(setting["title"], fontsize=11)
+        ax.legend(frameon=False, fontsize=8)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
