@@ -65,42 +65,47 @@ def aggregate_treatments_rows_with_individual_samples(df: pd.DataFrame) -> pd.Da
     not_agg = df[~mask]
 
     if not to_agg.empty:
+        # Define all possible aggregation instructions
+        agg_dict = {
+            "ecoregion": ("ecoregion", "first"),
+            "lat_zone": ("lat_zone", "first"),
+            "latitude": ("latitude", "first"),
+            "longitude": ("longitude", "first"),
+            "location": ("location", "first"),
+            "taxa": ("taxa", "first"),
+            "genus": ("genus", "first"),
+            "species": ("species", "first"),
+            "family": ("family", "first"),
+            "core_grouping": ("core_grouping", "first"),
+            "authors": ("authors", "first"),
+            "year": ("year", "first"),
+            "treatment_group": ("treatment_group", "first"),
+            "treatment": ("treatment", "first"),
+            "dic": ("dic", "mean"),
+            "dic_sd": ("dic", "std"),
+            "pco2": ("pco2", "mean"),
+            "pco2_sd": ("pco2", "std"),
+            "phtot": ("phtot", "mean"),
+            "phtot_sd": ("phtot", "std"),
+            "temp": ("temp", "mean"),
+            "temp_sd": ("temp", "std"),
+            "sal": ("sal", "mean"),
+            "sal_sd": ("sal", "std"),
+            "irr": ("irr", "mean"),
+            "irr_sd": ("irr", "std"),
+            "calcification": ("calcification", "mean"),
+            "calcification_sd": ("calcification", "std"),
+            "st_calcification": ("st_calcification", "mean"),
+            "st_calcification_sd": ("st_calcification", "std"),
+            "st_calcification_unit": ("st_calcification_unit", "first"),
+            "n": ("n", "count"),
+        }
+        # Only include columns that are present in the dataframe
+        agg_dict_present = {k: v for k, v in agg_dict.items() if v[0] in to_agg.columns}
+
         aggregated = (
-            to_agg.groupby(group_cols)
-            .agg(
-                ecoregion=("ecoregion", "first"),
-                lat_zone=("lat_zone", "first"),
-                latitude=("latitude", "first"),
-                longitude=("longitude", "first"),
-                location=("location", "first"),
-                taxa=("taxa", "first"),
-                genus=("genus", "first"),
-                species=("species", "first"),
-                family=("family", "first"),
-                core_grouping=("core_grouping", "first"),
-                authors=("authors", "first"),
-                year=("year", "first"),
-                treatment_group=("treatment_group", "first"),
-                treatment=("treatment", "first"),
-                dic=("dic", "mean"),
-                dic_sd=("dic", "std"),
-                pco2=("pco2", "mean"),
-                pco2_sd=("pco2", "std"),
-                phtot=("phtot", "mean"),
-                phtot_sd=("phtot", "std"),
-                temp=("temp", "mean"),
-                temp_sd=("temp", "std"),
-                sal=("sal", "mean"),
-                sal_sd=("sal", "std"),
-                irr=("irr", "mean"),
-                irr_sd=("irr", "std"),
-                calcification=("calcification", "mean"),
-                calcification_sd=("calcification", "std"),
-                st_calcification=("st_calcification", "mean"),
-                st_calcification_sd=("st_calcification", "std"),
-                st_calcification_unit=("st_calcification_unit", "first"),
-                n=("n", "count"),
-            )
+            to_agg.groupby([col for col in group_cols if col in to_agg.columns])
+            .agg(**agg_dict_present)
             .reset_index()
         )
         result = pd.concat([not_agg, aggregated], ignore_index=True)
