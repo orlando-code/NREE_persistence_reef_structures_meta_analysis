@@ -6,11 +6,13 @@ import pandas as pd
 from calcification_meta_analysis.analysis import analysis
 from calcification_meta_analysis.processing import (
     carbonate_processing,
+    cleaning,
     climatology,
     groups_processing,
+    locations,
     processing,
 )
-from calcification_meta_analysis.utils import config
+from calcification_meta_analysis.utils import config, file_ops
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,38 +31,86 @@ def process_extracted_calcification_data(
     Returns:
         pd.DataFrame: DataFrame with effect sizes and all processing applied.
     """
-    treatment_group_df = process_raw_to_treatment_groups(fp, sheet_name, selection_dict)
+    if selection_dict is None:  # exclude selected rows
+        selection_dict = {"include": "yes"}
 
-    effect_sizes_df = analysis.calculate_effect_for_df(treatment_group_df)
+    # populate carbonate chemistry
+    carbonate_df = carbonate_processing.populate_carbonate_chemistry(
+        fp, sheet_name=sheet_name, selection_dict=selection_dict
+    )
+    treatment_group_df = process_carbonate_df_to_treatment_groups(carbonate_df)
+    effect_sizes_df = process_treatment_group_df_to_effect_sizes(treatment_group_df)
+    return effect_sizes_df
 
+
+def process_carbonate_df_to_treatment_groups(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Process carbonate dataframe to treatment groups."""
+    # assign treatment groups
+    treatment_group_df = processing.assign_treatment_groups_multilevel(df)
+    # drop rows with nan in treatment (this is due to no treatment conditions identified)
+    treatment_group_df = treatment_group_df.dropna(subset=["treatment"])
+    # aggregate treatments with individual samples
+    return groups_processing.aggregate_treatments_rows_with_individual_samples(
+        treatment_group_df
+    )
+
+
+def process_treatment_group_df_to_effect_sizes(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Process treatment group dataframe to effect sizes."""
+    effect_sizes_df = analysis.calculate_effect_for_df(df)
     # infer dtypes for columns that are not numeric
     effect_sizes_df = effect_sizes_df.infer_objects()
     # calculate the dcalcification_dvariable values
     effect_sizes_df = processing.calculate_dvar(effect_sizes_df)
-
-    # return effect_sizes_df, treatment_group_df
     return effect_sizes_df
 
 
-def process_raw_to_treatment_groups(
-    fp: str, sheet_name: str = "all_data", selection_dict: Optional[dict] = None
+def process_extracted_df_to_effect_sizes(
+    df: pd.DataFrame,
 ) -> pd.DataFrame:
-    """
-    Process raw data to treatment groups.
-    """
-    if selection_dict is None:  # exclude selected rows
-        selection_dict = {"include": "yes"}
-
-    carbonate_df = carbonate_processing.populate_carbonate_chemistry(
-        fp, sheet_name=sheet_name, selection_dict=selection_dict
+    """Process clean extracted dataframe to effect sizes."""
+    # do the processing on the cleaned dataframe here to make it match the old version
+    df = df.rename(
+        columns=file_ops.read_yaml(config.resources_dir / "mapping.yaml")[
+            "sheet_column_map"
+        ]
     )
+    df.columns = df.columns.str.lower()
+    # create species_types column
+    df["species_types"] = df[["genus", "species"]].agg(" ".join, axis=1)
+    df["original_doi"] = df["doi"].str.split("-LOC").str[0]
+    # create original_doi column
+    treatment_group_df = process_carbonate_df_to_treatment_groups(df)
+    # standard calcification rate
+    treatment_group_df = cleaning.standardise_calcification_rates(treatment_group_df)
+    effect_sizes_df = process_treatment_group_df_to_effect_sizes(treatment_group_df)
 
-    carbonate_df = groups_processing.assign_treatment_groups_multilevel(carbonate_df)
+    # save locations to yaml file
+    locations.save_locations_information(
+        effect_sizes_df
+    )  # N.B. all coords already populated in pre-processing
 
-    logging.info("Aggregating treatments with individual samples...")
-    return groups_processing.aggregate_treatments_rows_with_individual_samples(
-        carbonate_df
+    # clean up the dataframe to be clean again
+    # undo column name mapping
+    effect_sizes_df = effect_sizes_df.rename(
+        columns=file_ops.read_yaml(config.resources_dir / "mapping.yaml")[
+            "sheet_column_map"
+        ],
     )
+    return effect_sizes_df
+
+
+def process_carbonate_df_to_effect_sizes(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Process carbonate dataframe to effect sizes."""
+    treatment_group_df = process_carbonate_df_to_treatment_groups(df)
+    effect_sizes_df = process_treatment_group_df_to_effect_sizes(treatment_group_df)
+    return effect_sizes_df
 
 
 def process_climatology_data(
@@ -118,10 +168,10 @@ def process_climatology_data(
         sst_ph_climatology_df_mi, how="inner"
     )
 
-    logging.info(
-        f"Unique locations in climatology: {len(sst_ph_climatology_df_mi.index.unique())}, "
-        f"locations in working experimental dataframe: {len(experimental_df.drop_duplicates('doi', keep='first'))}"
-    )
+    # logging.info(
+    #     f"Unique locations in climatology: {len(sst_ph_climatology_df_mi.index.unique())}, "
+    #     f"locations in working experimental dataframe: {len(experimental_df.drop_duplicates('doi', keep='first'))}"
+    # )
 
     # exclude aquaria locations # TODO: make this more robust/automated
     # local_climatology_df = local_climatology_df[
