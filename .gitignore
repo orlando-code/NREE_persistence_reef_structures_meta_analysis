@@ -1,5 +1,8 @@
 # ignore macos system files
 .DS_Store
+__pycache__/
+.vscode/
+*.egg-info/
 
 # ignore private data
 api_keys.yaml
