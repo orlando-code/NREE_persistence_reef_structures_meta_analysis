@@ -19,25 +19,26 @@ def safe_import_r_package(package_name: str, install_if_missing: bool = True):
     Raises:
         ImportError: If package cannot be installed or imported
     """
-    with RContextManager() as r_ctx:
-        ro = r_ctx["ro"]
+    with RContextManager():
+        # with RContextManager() as r_ctx:
+        # ro = r_ctx["ro"]
 
         try:
             # try to import the package within the context
             return importr(package_name)
         except Exception as e:
-            # If import fails, try installation if requested
+            # if import fails, try installation if requested
             if install_if_missing:
                 print(f"Installing R package '{package_name}'...")
 
                 try:
-                    # Use R's utils package to install from CRAN
+                    # use R's utils package to install from CRAN
                     utils = importr("utils")
                     utils.chooseCRANmirror(ind=1)  # Choose first CRAN mirror
                     utils.install_packages(package_name)
                     print(f"Successfully installed '{package_name}'")
 
-                    # Try importing again after installation
+                    # try importing again after installation
                     return importr(package_name)
                 except Exception as install_error:
                     raise ImportError(
@@ -54,11 +55,11 @@ def RContextManager():
     This function handles different versions of rpy2 and provides fallback mechanisms.
     """
     try:
-        # Try the newer rpy2 API first (3.5+)
+        # try the newer rpy2 API first (3.5+)
         try:
             from rpy2.robjects.conversion import localconverter
 
-            # Use the combined converter context
+            # use the combined converter context
             with localconverter(ro.default_converter + pandas2ri.converter):
                 yield {
                     "ro": ro,
@@ -67,21 +68,21 @@ def RContextManager():
                 }
 
         except ImportError:
-            # Fallback for older rpy2 versions
+            # fallback for older rpy2 versions
             try:
                 from rpy2.robjects.conversion import Converter
 
-                # Create converter instance
+                # create converter instance
                 converter_instance = Converter(
                     ro.default_converter + pandas2ri.converter
                 )
 
-                # Use the combined converter context
+                # use the combined converter context
                 with converter_instance.context():
                     yield {"ro": ro, "pandas2ri": pandas2ri, "Converter": Converter}
 
             except Exception:
-                # Final fallback - just activate pandas2ri without context management
+                # final fallback - just activate pandas2ri without context management
                 yield {"ro": ro, "pandas2ri": pandas2ri, "localconverter": None}
 
     except Exception as e:
@@ -90,3 +91,9 @@ def RContextManager():
             f"[R_CONTEXT] rpy2 version: {ro.__version__ if hasattr(ro, '__version__') else 'unknown'}"
         )
         raise
+
+
+def index_named_list(named_list, name: str):
+    """Index an R NamedList object by name of variable. Necessary since OrdDict objects now replaced by NamedList objects."""
+    names = named_list._NamedList__names
+    return named_list[names.index(name)]
