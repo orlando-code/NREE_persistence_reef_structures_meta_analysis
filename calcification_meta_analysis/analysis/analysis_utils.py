@@ -5,8 +5,8 @@ import pandas as pd
 import rpy2.robjects as ro
 import statsmodels.api as sm
 from scipy.interpolate import make_interp_spline
-from scipy.stats import median_abs_deviation
 
+from calcification_meta_analysis.analysis import analysis
 from calcification_meta_analysis.utils import config, file_ops
 
 
@@ -16,10 +16,8 @@ def preprocess_df_for_meta_model(
     effect_type_var: str = None,
     treatment: list[str] | str = None,
     formula_components: dict = None,
-    dvar_threshold: float = None,
-    var_threshold: float = None,
     verbose: bool = True,
-    # apply_cooks_threshold: bool = False,
+    apply_approx_cooks_threshold: bool = False,
 ) -> pd.DataFrame:
     data = df.copy()
     df["doi"] = df["doi"].astype(str)
@@ -40,29 +38,15 @@ def preprocess_df_for_meta_model(
     data = data.convert_dtypes()
     n_nans = n_investigation - len(data)
 
-    # filter out extreme values of dcalcification_dvariable
-    n_pre_dvar_filter = len(data)
-    data = (
-        filter_extreme_dvars(data, treatment, dvar_threshold)
-        if dvar_threshold
-        else data
+    # remove outliers
+    nparams = get_number_of_params(formula_components)
+    data, cooks_outliers = (
+        analysis.remove_cooks_outliers(
+            data, effect_type=effect_type, nparams=nparams, verbose=False
+        )
+        if apply_approx_cooks_threshold
+        else (data, [])
     )
-    n_post_dvar_filter = len(data)
-    n_filtered = n_pre_dvar_filter - n_post_dvar_filter
-
-    # remove extreme variances
-    data = data[data[f"{effect_type}_var"] < var_threshold] if var_threshold else data
-    n_post_var_filter = len(data)
-
-    # # remove outliers
-    # nparams = get_number_of_params(formula_components)
-    # data, cooks_outliers = (
-    #     analysis.remove_cooks_outliers(
-    #         data, effect_type=effect_type, nparams=nparams, verbose=False
-    #     )
-    #     if apply_cooks_threshold
-    #     else (data, [])
-    # )
 
     if verbose:
         # summarise processing
@@ -70,14 +54,7 @@ def preprocess_df_for_meta_model(
         print("Treatment: ", treatment)
         print("Total samples in input data: ", len(df))
         print("Total samples of relevant investigation: ", n_investigation)
-        print(
-            "Total samples dropped due to dcalcification/dtreatment filter: ",
-            n_pre_dvar_filter - n_post_dvar_filter,
-        )
-        print(
-            "Total samples dropped due to variance filter: ",
-            n_post_dvar_filter - n_post_var_filter,
-        )
+        print("Total samples dropped due to OLS Cook's distance: ", len(cooks_outliers))
         print("Dropped due to NaN values: ", n_nans)
         nan_counts = df[required_columns].isna().sum()
         for col, count in nan_counts.items():
@@ -85,7 +62,7 @@ def preprocess_df_for_meta_model(
                 print(f"\t{col}: {count} NaN(s)")
         print("Dropped due to Cook's distance: ", len(cooks_outliers))
         print(
-            f"Final sample count: {len(data)} ({len(cooks_outliers) + n_nans + (len(df) - n_investigation + n_filtered)} rows dropped)\n"
+            f"Final sample count: {len(data)} ({len(cooks_outliers) + n_nans + (len(df) - n_investigation)} rows dropped)\n"
         )
 
     return data.infer_objects()
@@ -93,25 +70,11 @@ def preprocess_df_for_meta_model(
 
 def get_number_of_params(formula_components: dict) -> int:
     """Get the number of parameters in a formula."""
-    split_terms = re.split(r"\s*[\+\-]\s*", formula_components["formula"])
-    return len(split_terms) + 1 if formula_components["intercept"] else len(split_terms)
-
-
-def filter_extreme_dvars(
-    data: pd.DataFrame, treatment: str | list[str], threshold: float = 100
-) -> pd.DataFrame:
-    """Filter out extreme dvars."""
-    if isinstance(treatment, str):
-        treatment = [treatment]
-    for t in treatment:
-        if t == "temp_phtot":
-            data = data[
-                (abs(data["dvar_temp"]) < threshold**2)
-                & (abs(data["dvar_phtot"]) < threshold**2)
-            ]
-        else:
-            data = data[abs(data[f"dvar_{t}"]) < threshold]
-    return data
+    return (
+        len(formula_components["raw_predictors"]) + 1
+        if formula_components["intercept"]
+        else len(formula_components["raw_predictors"])
+    )
 
 
 def generate_metaregression_formula(
@@ -134,7 +97,6 @@ def generate_metaregression_formula(
 
 
 def _get_required_columns(
-    # treatment: list[str] | str,
     effect_type: str,
     formula_components: dict,
     effect_type_var: str = None,
@@ -193,32 +155,6 @@ def _get_treatment_vars(treatment: str) -> list[str]:
     return list(set(treatment_vars))
 
 
-def process_factorial_terms(predictor_terms: list[str]) -> list[str]:
-    """Process factorial terms into discrete and interaction terms.
-
-    e.g. from x*y to x+y+x:y or from x*y*z to x+y+z+x:y+x:z+y:z+x:y:z"""
-    discrete_terms = []
-    interaction_terms = []
-    for term in predictor_terms:
-        if "*" in term:
-            discrete_terms.extend(term.split("*"))
-            interaction_terms.append(term.replace("*", ":"))
-    return discrete_terms, interaction_terms
-
-
-def process_interaction_terms(predictor_terms: list[str]) -> list[str]:
-    """Process interaction terms into discrete and interaction terms.
-
-    e.g. from x*y to x+y+x:y or from x*y*z to x+y+z+x:y+x:z+y:z+x:y:z"""
-    discrete_terms = []
-    interaction_terms = []
-    for term in predictor_terms:
-        if ":" in term:
-            discrete_terms.extend(term.split(":"))
-            interaction_terms.append(term)
-    return discrete_terms, interaction_terms
-
-
 def get_formula_components(formula: str) -> dict:
     """
     Extracts the response variable, predictors, and intercept flag from a formula string.
@@ -239,22 +175,18 @@ def get_formula_components(formula: str) -> dict:
             "intercept": bool
         }
     """
-    import re
-
-    # print(f"Parsing formula: {formula}")
-
-    # Split formula into response and predictors
+    # split formula into response and predictors
     response_part, predictor_part = [p.strip() for p in formula.split("~", 1)]
 
-    # Handle intercept removal
+    # handle intercept removal
     predictor_part = predictor_part.replace(" ", "")
     has_intercept = "-1" not in predictor_part
     predictor_part = predictor_part.replace("-1", "")
 
-    # Split on '+' to get individual terms
+    # split on '+' to get individual terms
     raw_terms = [term.strip() for term in predictor_part.split("+") if term.strip()]
 
-    # Initialize collections for different term types
+    # initialize collections for different term types
     linear_terms = []
     factor_terms = []
     nonlinear_terms = []
@@ -266,43 +198,43 @@ def get_formula_components(formula: str) -> dict:
         if not term:
             continue
 
-        # Check for factorial terms (a*b expands to a + b + a:b)
+        # check for factorial terms (a*b expands to a + b + a:b)
         if "*" in term:
             factorial_terms.append(term)
-            # Extract variables from factorial term
+            # extract variables from factorial term
             factors = term.split("*")
             for factor in factors:
                 var = _extract_variable_name(factor.strip())
                 if var:
                     raw_predictors.add(var)
 
-        # Check for interaction terms (a:b)
+        # check for interaction terms (a:b)
         elif ":" in term:
             interaction_terms.append(term)
-            # Extract variables from interaction
+            # extract variables from interaction
             interactors = term.split(":")
             for interactor in interactors:
                 var = _extract_variable_name(interactor.strip())
                 if var:
                     raw_predictors.add(var)
 
-        # Check for factor terms
+        # check for factor terms
         elif term.startswith("factor("):
-            # Extract variable name from factor(variable)
+            # extract variable name from factor(variable)
             match = re.search(r"factor\(([^)]+)\)", term)
             if match:
                 raw_predictors.add(match.group(1))
                 factor_terms.append(match.group(1))
 
-        # Check for nonlinear terms I(...)
+        # check for nonlinear terms I(...)
         elif term.startswith("I("):
             nonlinear_terms.append(term)
-            # Extract variable name from I(variable^power)
+            # extract variable name from I(variable^power)
             var = _extract_variable_name(term)
             if var:
                 raw_predictors.add(var)
 
-        # Simple linear term
+        # simple linear term
         else:
             linear_terms.append(term)
             raw_predictors.add(term)
@@ -329,85 +261,87 @@ def _extract_variable_name(term: str) -> str:
         I(delta_t^2) -> delta_t
         factor(core_grouping) -> core_grouping
     """
-    import re
 
-    # Handle I(...) terms
+    # handle I(...) terms
     if term.startswith("I("):
-        # Extract variable from I(variable^power) or I(variable)
+        # extract variable from I(variable^power) or I(variable)
         match = re.search(r"I\(([^)^]+)", term)
         if match:
             return match.group(1)
 
-    # Handle factor(...) terms
+    # handle factor(...) terms
     elif term.startswith("factor("):
         match = re.search(r"factor\(([^)]+)\)", term)
         if match:
             return match.group(1)
 
-    # Simple variable name
+    # simple variable name
     else:
         return term.strip()
 
     return ""
 
 
-def p_score(prediction: float, se: float, null_value: float = 0, df: int = 1) -> float:
+def p_score(
+    prediction: float,
+    se: float,
+    dof: int,
+    null_value: float = 0,
+) -> float:
     """
     Calculate the p-value for a given prediction and standard error.
+
+    Args:
+        prediction (float): The prediction.
+        se (float): The standard error.
+        dof (int): The degrees of freedom for the t-distribution (n-k where n is the number of observations and k is the number of coefficients).
+        null_value (float): The null value.
+
+    Returns:
+        float: The p-value.
     """
     if se == 0:
         return 0
-    z = (prediction - null_value) / se
+    t_score = (prediction - null_value) / se
     from scipy.stats import t as scipy_t
 
-    p = 2 * (
-        1 - scipy_t.cdf(abs(z), df=df)
-    )  # two-tailed p-value with t-distribution, df=1 as placeholder
-    return p
+    return 2 * (
+        1 - scipy_t.cdf(abs(t_score), df=dof)
+    )  # two-tailed p-value with t-distribution
 
 
-def assign_p_score_and_certainty(predictions: pd.DataFrame, df: int = 1):
-    # calculate p-scores and certainty
-    predictions["p_score"] = predictions.apply(
-        lambda row: p_score(row["pred"], row["se"], null_value=0, df=df),
-        axis=1,
-    )
-    predictions["certainty"] = predictions["p_score"].apply(assign_certainty)
-    return predictions
-
-
-### assign certainty levels
 def assign_certainty(p_score: float) -> int:
     """
     Assign certainty levels based on p-value.
     """
-    if p_score < 0.001:
-        return 4  # very high certainty
-    elif p_score < 0.01:
-        return 3  # high certainty
+    if p_score < 0.01:
+        return 3  # very high certainty
     elif p_score < 0.05:
-        return 2  # medium certainty
+        return 2  # high certainty
+    elif p_score < 0.1:
+        return 1  # medium certainty
     else:
-        return 1  # low certainty
+        return 0  # low certainty
 
 
-def filter_robust_zscore(series: pd.Series, threshold: float = 20) -> pd.Series:
+def assign_p_score_and_certainty(predictions: pd.DataFrame, dof: int):
     """
-    Filter out outliers based on robust z-scores.
+    Assign p-scores and certainty to a dataframe of predictions.
 
     Args:
-        series (pd.Series): The series to filter.
-        threshold (float): The z-score threshold for filtering.
+        predictions (pd.DataFrame): The dataframe containing the predictions.
+        dof (int): The degrees of freedom for the t-distribution (n-k where n is the number of observations and k is the number of coefficients).
 
     Returns:
-        pd.Series: A boolean series indicating which values are not outliers.
+        pd.DataFrame: The dataframe with p-score and certainty columns.
     """
-    median = np.median(series)
-    mad = median_abs_deviation(
-        series, scale="normal"
-    )  # scale for approx equivalence to std dev
-    robust_z = np.abs((series - median) / mad)
-    return robust_z < threshold
+    # calculate p-scores and certainty
+    predictions["p_score"] = predictions.apply(
+        lambda row: p_score(row["pred"], row["se"], dof=dof, null_value=0),
+        axis=1,
+    )
+    predictions["certainty"] = predictions["p_score"].apply(assign_certainty)
+    return predictions
 
 
 def extrapolate_predictions(df, year=2100):
@@ -426,7 +360,7 @@ def extrapolate_predictions(df, year=2100):
 
         interp_xs = group_df["time_frame"].values
 
-        # Prepare a dictionary for the new row (constant fields first)
+        # prepare a dictionary for the new row (constant fields first)
         new_row = {
             "scenario": scenario,
             "percentile": percentile,
@@ -437,7 +371,7 @@ def extrapolate_predictions(df, year=2100):
         for value_col in value_cols:
             inter_ys = group_df[value_col].values
 
-            # Need at least 2 points to interpolate/extrapolate
+            # need at least 2 points to interpolate/extrapolate
             if len(interp_xs) < 2:
                 continue
 
@@ -450,7 +384,7 @@ def extrapolate_predictions(df, year=2100):
 
         new_rows.append(new_row)
 
-    # Add the new rows to the original dataframe
+    # add the new rows to the original dataframe
     df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
 
     return df
@@ -471,13 +405,10 @@ def fit_curve(
     Returns:
         model: The fitted regression model.
     """
-    # Remove NaNs
     df = df[df[variable].notna() & df[effect_type].notna()]
 
-    # Create polynomial features
+    # create polynomial features and fit model
     X = np.vander(df[variable], N=order + 1, increasing=True)
-
-    # Fit the model
     model = sm.OLS(df[effect_type], X).fit()
     return model
 
@@ -502,13 +433,6 @@ def get_moderator_index(
     )
 
 
-def get_values_from_surface(model_surface, meshgrids, dt, dp):
-    """Wrapper for get_value_from_surface to extract all the relevant model results: pred, se, ci_lb, ci_ub, pi_lb, pi_up"""
-    for k in model_surface.keys():
-        model_surface[k] = get_value_from_surface(model_surface, meshgrids, dt, dp)
-    return model_surface
-
-
 def get_value_from_surface(model_surface, meshgrids, dt, dp):
     """Find the indices of the closest values to dt and dp in the sorted arrays"""
     i = np.abs(meshgrids[0][:, 0] - dt).argmin()
@@ -530,41 +454,3 @@ def populate_anomaly_df_with_surface_values(
             axis=1,
         )
     return anomaly_df
-
-
-# ----------------------
-# DEPRECATED FUNCTIONS
-# ----------------------
-
-# def pi_certainty(
-#     pred: pd.Series, se: pd.Series, pi_lb: pd.Series, pi_up: pd.Series, tau2: float
-# ) -> pd.Series:
-#     """
-#     Calculate a confidence/certainty level based on the width of the prediction interval (PI)
-#     relative to the magnitude of the prediction. Narrower intervals (relative to the effect size)
-#     indicate higher certainty.
-
-#     Args:
-#         pred (pd.Series): Predicted values.
-#         se (pd.Series): Standard errors of predictions.
-#         pi_lb (pd.Series): Lower bounds of prediction intervals.
-#         pi_up (pd.Series): Upper bounds of prediction intervals.
-#         tau2 (float): Additional variance (e.g., between-group variance).
-
-#     Returns:
-#         pd.Series: Certainty/confidence levels (1=low, 4=very high).
-#     """
-#     # Calculate the width of the prediction interval
-#     pi_width = pi_up - pi_lb
-#     # Relative width: how wide is the interval compared to the effect size
-#     rel_pi = pi_width / (np.abs(pred) + 1e-6)
-
-#     # Assign certainty levels: narrower relative PI = higher certainty
-#     # (Thresholds can be adjusted as needed)
-#     certainty = pd.Series(index=pred.index, dtype=int)
-#     certainty[rel_pi < 0.5] = 4  # very high certainty
-#     certainty[(rel_pi >= 0.5) & (rel_pi < 1.0)] = 3  # high certainty
-#     certainty[(rel_pi >= 1.0) & (rel_pi < 2.0)] = 2  # medium certainty
-#     certainty[rel_pi >= 2.0] = 1  # low certainty
-
-#     return certainty
