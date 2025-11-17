@@ -8,24 +8,32 @@ import numpy as np
 # R
 from scipy import interpolate
 
-from calcification_meta_analysis.utils import config, utils
+from calcification_meta_analysis.utils import config, file_ops
 
 
 def save_fig(
     fig: object,
     fig_name: str,
     run_key: str = None,
+    unique_id: bool = False,
+    file_extension: str = "jpg",
 ) -> None:
     print("Saving figure to", config.fig_dir)
     config.fig_dir.mkdir(parents=True, exist_ok=True)
-    run_key = (
-        run_key + "_" + utils.get_now_timestamp_formatted()
-        if run_key
-        else utils.get_now_timestamp_formatted()
-    )
+    if unique_id:
+        run_key = (
+            run_key + "_" + file_ops.get_now_timestamp_formatted()
+            if run_key
+            else file_ops.get_now_timestamp_formatted()
+        )
+    else:
+        run_key = run_key if run_key else ""
 
-    fig_fp = config.fig_dir / f"{fig_name}_{run_key}.png"
-    fig.savefig(fig_fp, dpi=300)
+    fig_fp = (
+        config.fig_dir
+        / f"{fig_name}{'_' + run_key if run_key else ''}.{file_extension}"
+    )
+    fig.savefig(fig_fp, dpi=300, bbox_inches="tight")
 
     print(f"Figure saved to {fig_fp}")
 
@@ -249,67 +257,3 @@ def save_dir_png_to_jpg(dir_path: str):
             img = img.convert("RGB")
         jpg_path = jpeg_dir_path / file_path.name.replace(".png", ".jpg")
         img.save(jpg_path, "JPEG")
-
-
-# --- Deprecated ---
-
-# def set_up_regression_plot(var: str):
-#     if var == "phtot":
-#         xlab = "$\\Delta$ pH"
-#         xlim = (-1, 0.1)
-#         predlim = xlim
-#         scenario_var = "ph"
-#     elif var == "temp":
-#         xlab = "$\\Delta$ Temperature ($^\\circ C$)"
-#         xlim = (-1, 10)
-#         predlim = xlim
-#         scenario_var = "sst"
-#     return xlab, xlim, predlim, scenario_var
-
-
-# def add_climatology_lines_to_plot(
-#     ax: matplotlib.axes.Axes,
-#     future_global_anomaly_df: pd.DataFrame,
-#     scenario_var: str,
-#     xlim: tuple[float, float],
-# ) -> matplotlib.axes.Axes:
-#     """
-#     Add climatology lines to the plot for different scenarios.
-
-#     Args:
-#         ax (matplotlib.axes.Axes): The axis to add the lines to.
-#         future_global_anomaly_df (pd.DataFrame): DataFrame containing future climate scenario data. Must have scenario, time_frame, and mean_{scenario_var}_anomaly columns.
-#         scenario_var (str): Variable name in future_global_anomaly_df to use for reference lines.
-#         xlim (tuple[float, float]): x-axis limits for the plot.
-
-#     Returns:
-#         matplotlib.axes.Axes: The axis with the added lines.
-#     """
-#     scenarios = future_global_anomaly_df["scenario"].unique()
-#     scenario_colours = sns.color_palette("Reds", len(scenarios))
-#     scenario_colour_dict = {
-#         scenario: scenario_colours[i] for i, scenario in enumerate(scenarios)
-#     }
-#     original_ylim = ax.get_ylim()  # get the original y-axis limits
-#     scenario_lines = []
-#     for scenario in scenarios:
-#         # add climatology lines to the plot
-#         predicted_effect_sizes = future_global_anomaly_df[
-#             (future_global_anomaly_df["time_frame"] == 2090)
-#             & (future_global_anomaly_df["scenario"] == scenario)
-#         ][:][f"mean_{scenario_var}_anomaly"]
-
-#         # plot vertical lines for each predicted effect size
-#         for effect_size in predicted_effect_sizes:
-#             line = ax.vlines(
-#                 x=effect_size,
-#                 ymin=original_ylim[0],
-#                 ymax=original_ylim[1],
-#                 color=scenario_colour_dict[scenario],
-#                 linestyle="--",
-#                 label=plot_config.SCENARIO_MAP[scenario],
-#                 zorder=5,
-#             )
-#             scenario_lines.append(line)
-#     ax.set_ylim(original_ylim[0], original_ylim[1])  # crop to y lim
-#     return ax
