@@ -1,6 +1,5 @@
 import logging
 import unicodedata
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -42,26 +41,22 @@ def fill_metadata(df: pd.DataFrame) -> pd.DataFrame:
     present_cols = [col for col in meta_cols if col in df.columns]
     if present_cols:
         df[present_cols] = df[present_cols].infer_objects(copy=False).ffill()
+    # check that author column doesn't change within a DOI for df to include
+    include_df = df[df["include"] == "yes"] if "include" in df.columns else df
+    dois_with_different_author_fields = (
+        include_df.groupby("doi")["authors"].nunique().loc[lambda x: x > 1]
+    )
+    if not dois_with_different_author_fields.empty:
+        logger.warning(
+            f"DOIs with different author fields: {dois_with_different_author_fields.index.tolist()}"
+        )
+    # check that the location column doesn't change within a DOI
+    if "location" in df.columns:
+        df["location"] = df.groupby("doi")["location"].ffill()
     if "coords" in df.columns and "cleaned_coords" in df.columns:
         df[["coords", "cleaned_coords"]] = df.groupby("doi")[
             ["coords", "cleaned_coords"]
         ].ffill()
-    return df
-
-
-def filter_selection(
-    df: pd.DataFrame, selection_dict: Optional[dict] = None
-) -> pd.DataFrame:
-    """Filter dataframe based on selection dictionary."""
-    if selection_dict is None:
-        selection_dict = {"include": "yes"}
-    for key, value in selection_dict.items():
-        if key not in df.columns:
-            logger.warning(f"Selection key '{key}' not found in DataFrame columns.")
-            continue
-        df = (
-            df[df[key].isin(value)] if isinstance(value, list) else df[df[key] == value]
-        )
     return df
 
 
@@ -70,7 +65,10 @@ def convert_types(df: pd.DataFrame) -> pd.DataFrame:
     if "year" in df.columns:
         df["year"] = pd.to_datetime(df["year"], format="%Y", errors="coerce")
     if "n" in df.columns and df["n"].dtype == "object":
-        df = df[~df["n"].str.contains("~", na=False)]
+        mask = df["n"].apply(
+            lambda x: isinstance(x, str) and "~" in x if pd.notna(x) else False
+        )
+        df = df[~mask]
         df = df[df.n != "M"]
     for col in df.columns:
         if col != "year":
@@ -89,18 +87,6 @@ def replace_empty_cells_with_nan(df: pd.DataFrame) -> pd.DataFrame:
 def remove_unnamed_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Remove unnamed columns."""
     return df.loc[:, ~df.columns.str.contains("^unnamed")]
-
-
-def convert_ph_to_hplus(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert pH to hplus."""
-    try:
-        df["hplus"] = df["phtot"].apply(
-            lambda p: units.ph_to_hplus(p) if pd.notna(p) else None
-        )
-    except Exception as e:
-        logger.error(f"Error during pH to hplus conversion: {e}")
-        raise
-    return df
 
 
 def convert_irr_to_par(df: pd.DataFrame) -> pd.DataFrame:
@@ -137,24 +123,24 @@ def standardise_calcification_rates(df: pd.DataFrame) -> pd.DataFrame:
     """Standardise calcification rates with proper error handling."""
     df_copy = df.copy()
 
-    # Track problematic rows
+    # track any problematic rows
     problematic_rows = []
     successful_conversions = 0
 
     for idx, row in df_copy.iterrows():
         try:
-            # Check if we have the required data for conversion
+            # check if we have the required data for conversion
             if pd.notna(row.get("calcification")) and pd.notna(
                 row.get("st_calcification_unit")
             ):
-                # Perform the conversion
+                # perform the rate and unit conversion
                 converted_rate, converted_sd, converted_unit = units.rate_conversion(
                     row.get("calcification"),
                     row.get("calcification_sd"),
                     row.get("st_calcification_unit"),
                 )
 
-                # Check if conversion was successful (not just copying original values)
+                # check if conversion was successful (not just copying original values)
                 if (
                     converted_unit
                     and converted_unit != ""
@@ -164,8 +150,7 @@ def standardise_calcification_rates(df: pd.DataFrame) -> pd.DataFrame:
                     df_copy.loc[idx, "st_calcification_sd"] = converted_sd
                     df_copy.loc[idx, "st_calcification_unit"] = converted_unit
                     successful_conversions += 1
-                else:
-                    # Conversion failed or returned error
+                else:  # conversion failed or returned error
                     problematic_rows.append(
                         {
                             "index": idx,
@@ -178,8 +163,7 @@ def standardise_calcification_rates(df: pd.DataFrame) -> pd.DataFrame:
                             else "No unit mapping",
                         }
                     )
-            else:
-                # Missing required data
+            else:  # missing required data
                 missing_data = []
                 if pd.isna(row.get("calcification")):
                     missing_data.append("calcification")
@@ -198,7 +182,7 @@ def standardise_calcification_rates(df: pd.DataFrame) -> pd.DataFrame:
                 )
 
         except Exception as e:
-            # Individual row conversion failed
+            # individual row conversion failed
             problematic_rows.append(
                 {
                     "index": idx,
@@ -210,7 +194,7 @@ def standardise_calcification_rates(df: pd.DataFrame) -> pd.DataFrame:
                 }
             )
 
-    # Log results
+    # log results
     total_rows = len(df_copy)
     logger.info(
         f"Unit standardization complete: {successful_conversions}/{total_rows} rows converted successfully"
@@ -218,7 +202,7 @@ def standardise_calcification_rates(df: pd.DataFrame) -> pd.DataFrame:
 
     if problematic_rows:
         logger.warning(f"Found {len(problematic_rows)} problematic rows:")
-        for problem in problematic_rows[:10]:  # Show first 10 problems
+        for problem in problematic_rows[:10]:  # show first 10 problems
             logger.warning(
                 f"  Row {problem['index']} (DOI: {problem['doi']}): {problem['error']}"
             )
@@ -236,14 +220,11 @@ def round_ns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def preprocess_df(
-    df: pd.DataFrame, selection_dict: Optional[dict] = None
-) -> pd.DataFrame:
+def preprocess_df(df: pd.DataFrame) -> pd.DataFrame:
     """Clean dataframe fields and standardise for future processing."""
     try:
         df = normalize_columns(df)
         df = fill_metadata(df)
-        df = filter_selection(df, selection_dict)
         df = convert_types(df)
         df = remove_unnamed_columns(df)
         df = replace_empty_cells_with_nan(df)
@@ -257,22 +238,25 @@ def preprocess_df(
 def process_raw_data(
     df: pd.DataFrame,
     require_results: bool = True,
-    ph_conversion: bool = True,
-    selection_dict: Optional[dict] = None,
 ) -> pd.DataFrame:
     """Process raw data from the spreadsheet to prepare for analysis."""
     try:
-        df = preprocess_df(df, selection_dict)
+        df = preprocess_df(df)
         df = locations.assign_coordinates(df)
         df = locations.uniquify_multilocation_study_dois(df)
         locations.save_locations_information(df)
         df = locations.assign_ecoregions(df)
         df = taxonomy.assign_taxonomical_info(df)
         df = convert_irr_to_par(df)
-        if ph_conversion:
-            df = convert_ph_to_hplus(df)
         if require_results:
             df = df.dropna(subset=["n", "calcification"])
+            # drop rows where both calcification_se and calcification_sd are NaN
+            df = df[
+                ~(
+                    (df["calcification_se"].isna() & df["calcification_sd"].isna())
+                    & (df["n"] != 1)
+                )
+            ]
         df = units.map_units(df)
         df = calculate_calcification_sd(df)
         df = standardise_calcification_rates(df)
