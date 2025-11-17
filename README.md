@@ -1,15 +1,15 @@
 This repository documents the code necessary to run the meta-analysis presented in the 'Persistence of coral reef structures into the 21st Century' paper in Nature Reviews Earth & Environment (202X).
 
 
-## How to use this repository
+# How to use this repository
 
 If you're in a rush, please check out the `meta-analysis` notebook. This exhibits all the code run from start to finish generating the plots and values detailed in the paper (predominantly in the supplementary material).
 
 If you're interested in running the analysis yourself, read on!
 
-### How to run the analysis
+# How to run the analysis
 
-0. <ins>Create</ins> a virtual environment with the necessary packages
+## 0. <ins>Create</ins> a virtual environment with the necessary packages
 
 
 To get started with the analysis, you need to set up a Python environment with the correct dependencies.
@@ -42,9 +42,7 @@ pip install .              # Installs dependencies from pyproject.toml
 You're now ready to proceed with data download and organisation!
 
 
-
-
-1. <ins>Download</ins> the necessary datasets
+## 1. <ins>Download</ins> the necessary datasets
 
 The paper and its visualisations make use of a number of datasets. Not all are required for every figure. In order of importance (number of figures relying on them) the datasets are:
 
@@ -66,7 +64,7 @@ e. **Forecasted coral cover**
 f. **Emissions associated with RCPs**  
    To provide an alternative reference level for calcification rates, Figure 2 can be plotted against CO$_2$ emissions provided in [10.5194/gmd-13-3571-2020](10.5194/gmd-13-3571-2020).
 
-2. <ins>Organise</ins> the datasets into the correct structure. Please see below for the necessary repository structure:
+## 2. <ins>Organise</ins> the datasets into the correct structure. Please see below for the necessary repository structure:
 
 ```
 calcification_meta_analysis/
@@ -124,12 +122,12 @@ calcification_meta_analysis/
     └── species_mapping.yaml   # species information from WoRMS
 ```
 
-3. <ins>Run</ins> the code via `notebooks/meta-analysis.ipynb`!
+## 3. <ins>Run</ins> the code via `notebooks/meta-analysis.ipynb`!
 
 This optionally generates the plots and saves them to a local directory.
 
 
-#### Resources
+### Resources
 
 While the following files are created automatically by the analysis pipeline, the complete files are included in the repository for ease (and speed) of use.
 
@@ -163,7 +161,7 @@ Contains taxonomic mapping information including genus, species, family, and hig
 Taxonomic data (genus, species, family, taxa) was assigned based on the reported species binomial via the World Register of Marine Species (WoRMS) ‘AphiaRecordsByName’ API (https://www.marinespecies.org/rest/)
 
 
-### References
+## References
 
 Meinshausen, M., Nicholls, Z. R. J., Lewis, J., Gidden, M. J., Vogel, E., Freund, M., Beyerle, U., Gessner, C., Nauels, A., Bauer, N., Canadell, J. G., Daniel, J. S., John, A., Krummel, P. B., Luderer, G., Meinshausen, N., Montzka, S. A., Rayner, P. J., Reimann, S., Smith, S. J., van den Berg, M., Velders, G. J. M., Vollmer, M. K., and Wang, R. H. J.: The shared socio-economic pathway (SSP) greenhouse gas concentrations and their extensions to 2500, Geosci. Model Dev., 13, 3571–3605, https://doi.org/10.5194/gmd-13-3571-2020, 2020.
 
