@@ -10,7 +10,6 @@ from calcification_meta_analysis.processing import (
     climatology,
     groups_processing,
     locations,
-    processing,
 )
 from calcification_meta_analysis.utils import config, file_ops
 
@@ -18,7 +17,10 @@ logging.basicConfig(level=logging.INFO)
 
 
 def process_extracted_calcification_data(
-    fp: str, sheet_name: str = "all_data", selection_dict: Optional[dict] = None
+    fp: str,
+    sheet_name: str = "all_data",
+    overwrite: bool = True,
+    save_name: str = "analysis_ready_calcification_data.csv",
 ) -> pd.DataFrame:
     """
     Full pipeline for processing calcification data from raw Excel to effect sizes.
@@ -26,20 +28,21 @@ def process_extracted_calcification_data(
     Args:
         fp (str): Path to Excel file.
         sheet_name (str): Sheet name in Excel file.
-        selection_dict (dict): Optional dict for row selection.
-
+        overwrite (bool): Whether to overwrite existing analysis ready data file.
     Returns:
         pd.DataFrame: DataFrame with effect sizes and all processing applied.
     """
-    if selection_dict is None:  # exclude selected rows
-        selection_dict = {"include": "yes"}
-
     # populate carbonate chemistry
     carbonate_df = carbonate_processing.populate_carbonate_chemistry(
-        fp, sheet_name=sheet_name, selection_dict=selection_dict
+        fp, sheet_name=sheet_name
     )
+    print("Total number of samples:", carbonate_df.n.sum())
     treatment_group_df = process_carbonate_df_to_treatment_groups(carbonate_df)
     effect_sizes_df = process_treatment_group_df_to_effect_sizes(treatment_group_df)
+    # save to r-ready csv if not already present
+    if not (config.data_dir / save_name).exists() or overwrite:
+        effect_sizes_df.to_csv(config.data_dir / save_name, index=False)
+        print(f"Saved to {config.data_dir / save_name}")
     return effect_sizes_df
 
 
@@ -48,9 +51,7 @@ def process_carbonate_df_to_treatment_groups(
 ) -> pd.DataFrame:
     """Process carbonate dataframe to treatment groups."""
     # assign treatment groups
-    treatment_group_df = processing.assign_treatment_groups_multilevel(df)
-    # drop rows with nan in treatment (this is due to no treatment conditions identified)
-    treatment_group_df = treatment_group_df.dropna(subset=["treatment"])
+    treatment_group_df = groups_processing.assign_treatment_groups_multilevel(df)
     # aggregate treatments with individual samples
     return groups_processing.aggregate_treatments_rows_with_individual_samples(
         treatment_group_df
@@ -65,7 +66,7 @@ def process_treatment_group_df_to_effect_sizes(
     # infer dtypes for columns that are not numeric
     effect_sizes_df = effect_sizes_df.infer_objects()
     # calculate the dcalcification_dvariable values
-    effect_sizes_df = processing.calculate_dvar(effect_sizes_df)
+    # effect_sizes_df = processing.calculate_dvar(effect_sizes_df)  # XXX this had been cutting some small effects to zero
     return effect_sizes_df
 
 
@@ -95,12 +96,12 @@ def process_extracted_df_to_effect_sizes(
     )  # N.B. all coords already populated in pre-processing
 
     # clean up the dataframe to be clean again
-    # undo column name mapping
     effect_sizes_df = effect_sizes_df.rename(
         columns=file_ops.read_yaml(config.resources_dir / "mapping.yaml")[
             "sheet_column_map"
         ],
-    )
+    )  # undo column name mapping
+
     return effect_sizes_df
 
 
@@ -118,7 +119,6 @@ def process_climatology_data(
     ph_clim_path: Optional[str] = None,
     sst_clim_path: Optional[str] = None,
     locations_path: Optional[str] = None,
-    experiment_type: Optional[str] = "calcification",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Merge processed data with climatology and compute global average anomalies.
@@ -144,7 +144,6 @@ def process_climatology_data(
     )  # N.B. locations.yaml has far fewer locs than all_locations.yaml. Need to check what's happened here.
 
     logging.info("Loading climatology data...")
-    # if experiment_type == "calcification":
     ph_climatology = climatology.convert_climatology_csv_to_multiindex(
         ph_clim_path, locations_path
     )
@@ -153,10 +152,6 @@ def process_climatology_data(
     )
 
     sst_ph_climatology_df = pd.merge(sst_climatology, ph_climatology)
-    # elif experiment_type == "bioerosion":
-    #     sst_ph_climatology_df = pd.read_csv(
-    #         config.climatology_data_dir / "site_locations_with_MMM_and_pH.csv"
-    #     )
 
     sst_ph_climatology_df_mi = sst_ph_climatology_df.set_index(
         ["doi", "location", "longitude", "latitude"]
@@ -167,18 +162,6 @@ def process_climatology_data(
     local_climatology_df = experimental_df_mi.join(
         sst_ph_climatology_df_mi, how="inner"
     )
-
-    # logging.info(
-    #     f"Unique locations in climatology: {len(sst_ph_climatology_df_mi.index.unique())}, "
-    #     f"locations in working experimental dataframe: {len(experimental_df.drop_duplicates('doi', keep='first'))}"
-    # )
-
-    # exclude aquaria locations # TODO: make this more robust/automated
-    # local_climatology_df = local_climatology_df[
-    #     ~local_climatology_df.index.get_level_values("location").str.contains(
-    #         "monaco|portugal|uk", case=False, na=False
-    #     )
-    # ]
 
     ph_anomalies = climatology.generate_location_specific_climatology_anomalies(
         local_climatology_df, "ph"
@@ -219,5 +202,4 @@ def process_climatology_data(
         )
         .reset_index()
     )
-    # return local_climatology_df, future_climatology_df
     return local_climatology_df, global_future_anomaly_df, global_anomaly_df
