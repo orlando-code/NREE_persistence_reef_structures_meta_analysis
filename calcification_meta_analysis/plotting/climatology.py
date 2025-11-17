@@ -1,4 +1,3 @@
-# general
 import cartopy.crs as ccrs
 import matplotlib
 import matplotlib.pyplot as plt
@@ -134,16 +133,16 @@ def plot_climate_anomalies(
     Returns:
         tuple[matplotlib.figure.Figure, np.ndarray]: Figure and array of axes objects.
     """
-    # Extract unique scenarios
+    # extract unique climatology scenarios
     scenarios = data.scenario.unique()
     n_cols = len(plot_vars)
 
-    # Create figure and axes
+    # create figure and axes
     fig, axes = plt.subplots(1, n_cols, figsize=figsize, dpi=dpi)
     if n_cols == 1:
-        axes = np.array([axes])  # Ensure axes is always an array
+        axes = np.array([axes])  # ensure axes is always an array
 
-    # Define colors and formatting
+    # define colors and formatting
     historic_colour, historic_alpha = "darkgrey", 0.5
     forecast_alpha = 0.2
     scenario_colours = sns.color_palette("Reds", len(scenarios))
@@ -151,21 +150,20 @@ def plot_climate_anomalies(
         scenario: scenario_colours[i] for i, scenario in enumerate(scenarios)
     }
 
-    # Get unique time points
+    # get unique time points
     x_points = data["time_frame"].unique()
 
-    # Plot each climate variable
+    # plot each climate variable
     for j, plot_var in enumerate(plot_vars):
         axis = axes[j]
-        # data_subset = data[data['scenario_var'] == plot_var]
 
         for scenario in scenarios:
-            # Get data for this scenario
+            # get data for this scenario
             forecast_subset = data[data["scenario"] == scenario]
             mean_data = forecast_subset[forecast_subset["percentile"] == "mean"]
             p10_data = forecast_subset[forecast_subset["percentile"] == "p10"]
             p90_data = forecast_subset[forecast_subset["percentile"] == "p90"]
-            # Create smooth interpolated lines
+            # create smooth interpolated lines
             x_fine, mean_spline = plot_utils.interpolate_spline(
                 x_points, mean_data[f"anomaly_value_{plot_var}"]
             )
@@ -176,11 +174,11 @@ def plot_climate_anomalies(
                 x_points, p90_data[f"anomaly_value_{plot_var}"]
             )
 
-            # Create masks for historical vs forecast data
+            # create masks for historical vs forecast data
             historic_mask = x_fine < time_discontinuity
             forecast_mask = x_fine >= time_discontinuity
 
-            # Plot forecast data
+            # plot forecast data
             axis.plot(
                 x_fine[forecast_mask],
                 mean_spline[forecast_mask],
@@ -197,7 +195,7 @@ def plot_climate_anomalies(
                 linewidth=0,
             )
 
-        # Plot historical data (once, since it's the same for all scenarios)
+        # plot historical data (once, since it's the same for all scenarios)
         axis.plot(
             x_fine[historic_mask],
             mean_spline[historic_mask],
@@ -213,7 +211,7 @@ def plot_climate_anomalies(
             linewidth=0,
         )
 
-        # Add variable label
+        # add variable label
         annotate_var = f"{plot_var_labels[plot_var]}"
         axis.annotate(
             annotate_var,
@@ -223,12 +221,12 @@ def plot_climate_anomalies(
             fontsize=10,
         )
 
-        # Format axis
+        # format axis
         axis.tick_params(axis="both", labelsize=8)
         axis.set_xlim(1995, 2100)
         axis.set_xlabel("Year", fontsize=8)
 
-    # Add legend
+    # add legend
     handles = [
         plt.Line2D([], [], linestyle="--", color=historic_colour, label="Historical")
     ] + [
@@ -251,9 +249,8 @@ def plot_climate_anomalies(
         frameon=False,
     )
 
-    # Adjust layout
-    plt.subplots_adjust(top=0.85)  # Make room for the title
-    # fig.tight_layout()
+    # adjust layout
+    plt.subplots_adjust(top=0.85)  # make room for the title
 
     return fig, axes
 
@@ -492,12 +489,23 @@ def plot_global_timeseries(
     figsize: tuple[float, float] = (10, 10),
     dpi: int = 300,
     title_org: str = None,
-) -> None:
+) -> tuple[matplotlib.figure.Figure, np.ndarray]:
     """
     Plot global timeseries for the given variables.
+
+    Args:
+        pred_anomaly_df (pd.DataFrame): DataFrame containing the data to plot with columns for
+            scenario, time_frame, scenario_var, anomaly_value_mean, anomaly_value_p10,
+            and anomaly_value_p90.
+        figsize (tuple[float, float]): Size of the figure as (width, height).
+        dpi (int): Resolution of the figure in dots per inch.
+        title_org (str): Original title of the plot.
+
+    Returns:
+        tuple[matplotlib.figure.Figure, np.ndarray]: Figure and array of axes objects.
     """
     scenarios = pred_anomaly_df["scenario"].unique()
-    # Define colors and formatting
+    # define colors and formatting
     historic_colour, historic_alpha = "darkgrey", 0.5
     forecast_alpha, zero_effect_colour, zero_effect_alpha = 0.2, "black", 0.5
     scenario_colours = sns.color_palette("Reds", len(scenarios))
@@ -508,8 +516,8 @@ def plot_global_timeseries(
     x_points = pred_anomaly_df["time_frame"].unique()
     time_discontinuity = 2025  # present day
 
-    # Plot each scenario
-    fig, axes = plt.subplots(len(scenarios), 1, figsize=(10, 10), sharex=True)
+    # plot each scenario
+    fig, axes = plt.subplots(len(scenarios), 1, figsize=figsize, dpi=dpi, sharex=True)
     for i, scenario in enumerate(scenarios):
         ax = axes[i]
         scenario_df = pred_anomaly_df[pred_anomaly_df["scenario"] == scenario]
@@ -519,7 +527,7 @@ def plot_global_timeseries(
         x_fine, up_spline = plot_utils.interpolate_spline(x_points, means_df["ci_lb"])
         x_fine, low_spline = plot_utils.interpolate_spline(x_points, means_df["ci_ub"])
 
-        # Masks and formatting
+        # mask out historical and forecast data for separate forecasting
         historic_mask = x_fine < time_discontinuity
         forecast_mask = x_fine >= time_discontinuity
 
@@ -560,7 +568,7 @@ def plot_global_timeseries(
             alpha=zero_effect_alpha,
         )
 
-        # Add zero effect line
+        # add zero effect line
         ax.hlines(
             0,
             xmin=means_df["time_frame"].min(),
@@ -569,11 +577,11 @@ def plot_global_timeseries(
             alpha=zero_effect_alpha,
         )
 
-        # Set title and labels
+        # set title and labels
         ax.set_ylabel("Relative calcification rate", fontsize=8)
         ax.grid(ls="--", alpha=0.5)
 
-    # Add global legend
+    # add global legend
     handles = [
         plt.Line2D([], [], linestyle="--", color=historic_colour, label="Historical"),
         plt.Line2D(
@@ -635,6 +643,17 @@ def plot_extreme_climatology_values(
     """
     Plot histogram distributions of temperature and pH anomalies together with vertical
     lines indicating extreme climatology values. Shade area above max temp and below min pH.
+
+    Args:
+        data_df (pd.DataFrame): DataFrame containing the data to plot with columns for
+            delta_t and delta_ph.
+        climatology_df (pd.DataFrame): DataFrame containing the climatology data with columns for
+            percentile and anomaly_value_sst and anomaly_value_ph.
+        figsize (tuple[float, float]): Size of the figure as (width, height).
+        dpi (int): Resolution of the figure in dots per inch.
+
+    Returns:
+        tuple[matplotlib.figure.Figure, np.ndarray]: Figure and array of axes objects.
     """
     # extract extreme climatology values concisely
     min_t, max_t, min_ph, max_ph = (
@@ -645,6 +664,7 @@ def plot_extreme_climatology_values(
         {
             "data": data_df["delta_t"],
             "xlabel": r"Temperature anomaly ($\Delta$SST, °C)",
+            "ylabel": "Sample count",
             "vlines": [
                 (min_t, "minimum SST", plt.cm.Reds_r(0)),
                 (max_t, "maximum SST", plt.cm.Reds_r(1)),
@@ -655,6 +675,7 @@ def plot_extreme_climatology_values(
         {
             "data": data_df["delta_ph"],
             "xlabel": r"pH anomaly ($\Delta$pH)",
+            "ylabel": "Sample count",
             "vlines": [
                 (min_ph, "minimum pH", plt.cm.Reds_r(0)),
                 (max_ph, "maximum pH", plt.cm.Reds_r(1)),
@@ -676,7 +697,7 @@ def plot_extreme_climatology_values(
         ymax = ax.get_ylim()[1]
         min_x = ax.get_xlim()[0]
         max_x = ax.get_xlim()[1]
-        # Shade region above max temp or below min pH depending on axis
+        # shade region above max temp or below min pH depending on axis
         for x, name, color in settings["vlines"]:
             ax.axvline(
                 x,
@@ -689,7 +710,7 @@ def plot_extreme_climatology_values(
                 zorder=10,
             )
         if settings["shade_type"] == "above":
-            # Shade area above max_t
+            # shade area above max_t
             ax.axvspan(
                 settings["vlines"][1][0],
                 ax.get_xlim()[1],
@@ -701,7 +722,7 @@ def plot_extreme_climatology_values(
                 label="_nolegend_",
             )
         elif settings["shade_type"] == "below":
-            # Shade area below min_ph
+            # shade area below min_ph
             ax.axvspan(
                 ax.get_xlim()[0],
                 settings["vlines"][0][0],
@@ -715,9 +736,8 @@ def plot_extreme_climatology_values(
 
         ax.set_xlim(min_x, max_x)
         ax.set_ylim(0, ymax * 1.05 if ymax > 0 else 1)
-        ax.legend(frameon=False, fontsize=8)
 
-    format_axes(axes, settings)
+    format_axes(axes, plot_settings)
 
     plt.tight_layout(h_pad=2)
     fig.suptitle(
@@ -748,8 +768,35 @@ def format_axes(axes: list[plt.Axes], settings: list[dict]) -> None:
 
     for ax, setting in zip(axes_flat, settings_list):
         ax.set_xlabel(setting["xlabel"], fontsize=10)
-        ax.set_ylabel("Count", fontsize=10)
+        ax.set_ylabel(setting["ylabel"], fontsize=10)
         ax.set_title(setting["title"], fontsize=11)
         ax.legend(frameon=False, fontsize=8)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
+
+
+def shade_forecast_boundaries(ax, boundary_type, limit_value):
+    """
+    Add shading to the axis to indicate regions beyond the reasonable forecasted climatologies.
+
+    Parameters:
+        ax (matplotlib.axes.Axes): The axes object to add shading to.
+        boundary_type (str): Either 'temp' for temperature anomaly or 'ph' for pH anomaly.
+        limit_value (float): The boundary value to use for shading.
+    """
+    if boundary_type == "temp":
+        # shade region where temperature anomaly > max_t
+        ax.axvspan(
+            limit_value,
+            10,  # arbitrary upper x value - assumes axis is always set to -1:6
+            color="gray",
+            alpha=0.4,
+        )
+    elif boundary_type == "ph":
+        # shade region where pH anomaly < min_ph
+        ax.axvspan(
+            -10,  # arbitrary lower x value - assumes axis is always set to -1:0.1
+            limit_value,
+            color="gray",
+            alpha=0.4,
+        )
