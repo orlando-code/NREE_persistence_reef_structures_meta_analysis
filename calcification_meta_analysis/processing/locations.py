@@ -2,7 +2,6 @@ import logging
 import re
 
 import geopandas as gpd
-import googlemaps
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
@@ -16,10 +15,25 @@ logger = logging.getLogger(__name__)
 
 
 def get_google_maps_coordinates(locations: list) -> dict:
-    """Get coordinates for a list of locations using Google Maps API, with local YAML caching."""
+    """Get coordinates for a list of locations using Google Maps API, with local YAML caching.
+
+    Args:
+        locations (list): List of locations to get coordinates for.
+    Returns:
+        dict: Dictionary of locations and their coordinates.
+    """
+    import googlemaps
+
     yaml_path = config.resources_dir / "gmaps_locations.yaml"
     gmaps_coords = file_ops.read_yaml(yaml_path) if yaml_path.exists() else {}
-    missing = set(locations) - set(gmaps_coords.keys())
+    # Assign as missing any locations that either:
+    # (a) are in locations and not in gmaps_coords, OR
+    # (b) are in gmaps_coords with any None value (i.e., fetched but no coords)
+    missing = set()
+    for loc in locations:
+        v = gmaps_coords.get(loc, None)
+        if v is None or (isinstance(v, (list, tuple)) and any(x is None for x in v)):
+            missing.add(loc)
     if not missing:
         logger.info(f"Using cached locations in {yaml_path}")
         return gmaps_coords
@@ -40,7 +54,14 @@ def get_google_maps_coordinates(locations: list) -> dict:
 
 
 def _get_coord_pair_from_google_maps(location_name: str, gmaps_client) -> pd.Series:
-    """Get the latitude and longitude of a location using the Google Maps API."""
+    """Get the latitude and longitude of a location using the Google Maps API.
+
+    Args:
+        location_name (str): Name of the location to get coordinates for.
+        gmaps_client (googlemaps.Client): Google Maps client.
+    Returns:
+        pd.Series: Series of latitude and longitude.
+    """
     try:
         result = gmaps_client.geocode(location_name)
         if result:
@@ -55,34 +76,42 @@ def _get_coord_pair_from_google_maps(location_name: str, gmaps_client) -> pd.Ser
         return pd.Series([None, None])
 
 
-# --- Main Location Processing Functions ---
-
-
 def assign_coordinates(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Assign coordinates to locations in the DataFrame. This function will:
-    1. Check if coordinates are already present in the 'coords' column.
+    Assign coordinates to locations in the DataFrame. This function:
+    1. Checks if coordinates are already present in the 'coords' column.
     2. If not, it will check the 'cleaned_coords' column.
     3. If 'cleaned_coords' is NaN, it will use the Google Maps API to get coordinates.
     4. If 'cleaned_coords' is not NaN, it will convert them to decimal degrees.
     """
     ### get locations for which there are no coordinates (from location, where cleaned_coords is NaN)
     locs = df.loc[df["cleaned_coords"].isna(), "location"].unique()
-    # temp_df = df.copy()
-
     gmaps_coords = get_google_maps_coordinates(locs)
     df["loc"] = df.apply(lambda row: _resolve_coordinates(row, gmaps_coords), axis=1)
     df["latitude"] = df["loc"].apply(lambda x: x[0] if isinstance(x, tuple) else None)
     df["longitude"] = df["loc"].apply(lambda x: x[1] if isinstance(x, tuple) else None)
     df = df.drop(columns=["loc"])  # remove helper column
     # drop rows for which latitude or longitude is NaN
+    num_dropped = len(df) - len(df.dropna(subset=["latitude", "longitude"]))
     df = df.dropna(subset=["latitude", "longitude"])
+    logger.info(f"Dropped {num_dropped} row(s) for which latitude or longitude is NaN")
+
     return df
 
 
-def _resolve_coordinates(row, gmaps_coords):
-    """Resolve coordinates from cleaned_coords, coords, or Google Maps."""
-    if pd.notna(row.get("cleaned_coords")):  # prefer cleaned coordinates
+def _resolve_coordinates(
+    row: pd.Series, gmaps_coords: dict
+) -> tuple[float, float] | None:
+    """Resolve coordinates from cleaned_coords, coords, or Google Maps.
+    Args:
+        row (pd.Series): Row of the DataFrame.
+        gmaps_coords (dict): Dictionary of locations and their coordinates.
+    Returns:
+        tuple: Tuple of latitude and longitude.
+    """
+    if pd.notna(
+        row.get("cleaned_coords")
+    ):  # if cleaned coordinates available, use them
         return standardize_coordinates(row["cleaned_coords"])
     elif pd.notna(row.get("coords")):  # use coordinates if there was no need to clean
         return standardize_coordinates(row["coords"])
@@ -113,7 +142,7 @@ def assign_ecoregions(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def save_locations_information(df):
+def save_locations_information(df: pd.DataFrame) -> None:
     """Save locations information to YAML and CSV files if not already present."""
     yaml_path = config.resources_dir / "locations.yaml"
     csv_path = config.resources_dir / "locations.csv"
@@ -122,12 +151,9 @@ def save_locations_information(df):
             ["doi", "location", "latitude", "longitude"]
         ].set_index("doi")
         file_ops.write_yaml(locs_df.to_dict(orient="index"), yaml_path)
-        logger.info(f"Saved locations to {yaml_path}")
+        logger.info(f"Saved locations (yaml)to {yaml_path}")
         locs_df.to_csv(csv_path, index=True, index_label="doi")
-        logger.info(f"Saved locations to {csv_path}")
-
-
-# --- Coordinate Parsing Utilities ---
+        logger.info(f"Saved locations (csv) to {csv_path}")
 
 
 def dms_to_decimal(
@@ -203,8 +229,14 @@ def standardize_coordinates(coord_string: str) -> tuple[float, float] | None:
     return (avg_lat, avg_lng)
 
 
-def _normalize_coord_string(coord_string):
-    """Standardize quotes and symbols in coordinate strings."""
+def _normalize_coord_string(coord_string: str) -> str:
+    """Standardize quotes and symbols in coordinate strings.
+
+    Args:
+        coord_string (str): Coordinate string to normalize.
+    Returns:
+        str: Normalized coordinate string.
+    """
     coord_string = (
         coord_string.replace("`", "'")
         .replace("′", "'")
@@ -222,6 +254,11 @@ def uniquify_multilocation_study_dois(df: pd.DataFrame) -> pd.DataFrame:
     """
     Uniquify DOIs for studies with multiple locations based on unique (latitude, longitude) pairs.
     For each unique (original_doi, latitude, longitude) combination, assign a unique DOI.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing the study information.
+    Returns:
+        pd.DataFrame: DataFrame with uniquified DOIs.
     """
     temp_df = df.copy()
     temp_df.loc[:, "original_doi"] = temp_df["doi"]
@@ -230,9 +267,9 @@ def uniquify_multilocation_study_dois(df: pd.DataFrame) -> pd.DataFrame:
     locs_df = temp_df.dropna(subset=["latitude", "longitude"]).drop_duplicates(
         latlon_cols
     )
-    # Create a unique DOI for each (original_doi, latitude, longitude) combination
+    # create a unique DOI for each (original_doi, latitude, longitude) combination
     locs_df.loc[:, "doi"] = utils.uniquify_repeated_values(locs_df["original_doi"])
-    # Merge back to original dataframe on (original_doi, latitude, longitude)
+    # merge back to original dataframe on (original_doi, latitude, longitude)
     og_index = temp_df.index
     temp_df = temp_df.merge(
         locs_df[latlon_cols + ["doi"]],
