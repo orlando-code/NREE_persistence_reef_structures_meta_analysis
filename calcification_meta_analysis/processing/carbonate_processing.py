@@ -1,4 +1,3 @@
-### calculate cargonate chemistry from experimental data
 import logging
 
 import cbsyst as cb
@@ -13,29 +12,23 @@ from calcification_meta_analysis.utils import config, file_ops
 logger = logging.getLogger(__name__)
 
 
-### carbonate chemistry
-def populate_carbonate_chemistry(
-    fp: str, sheet_name: str = "all_data", selection_dict: dict = None
-) -> pd.DataFrame:
+def populate_carbonate_chemistry(fp: str, sheet_name: str = "all_data") -> pd.DataFrame:
     """Populate carbonate chemistry parameters for a dataset.
     Args:
         fp (str): Path to Excel file containing extracted experimental data.
         sheet_name (str): Sheet name in Excel file.
-        selection_dict (dict): Optional dict for row selection.
 
     Returns:
         pd.DataFrame: DataFrame with carbonate chemistry parameters.
     """
-    if selection_dict is None:
-        selection_dict = {"include": "yes"}
+
     df = cleaning.process_raw_data(
         pd.read_excel(fp, sheet_name=sheet_name),
-        require_results=False,
-        selection_dict=selection_dict,
+        require_results=True,
     )
     logger.info("Loading measured values...")
     measured_df = file_ops.get_highlighted(fp, sheet_name=sheet_name)
-    measured_df = cleaning.preprocess_df(measured_df, selection_dict=selection_dict)
+    measured_df = cleaning.preprocess_df(measured_df)
     measured_df = _convert_ph_scales(measured_df)
     measured_df = _calculate_missing_phtot(measured_df)
 
@@ -49,43 +42,22 @@ def populate_carbonate_chemistry(
         lambda row: pd.Series(calculate_carb_chem(row, out_values)), axis=1
     )
 
-    # combine dataframes: fill NaN values in df with values from carb_df
-    # only fill where df has NaN values and carb_df has non-NaN values
+    # combine dataframes: only fill where df has NaN values and carb_df has non-NaN values
     combined_df = df.copy()
 
     # create a mask for where df has NaN values and carb_df has non-NaN values
     fill_mask = df.isna() & carb_df.notna()
 
-    # fill only the NaN values in df with corresponding values from carb_df
+    # fill only the NaN values in df with corresponding values from carb_df: ie where values have been populated from measured data, don't override
     for col in df.columns:
         if col in carb_df.columns and fill_mask[col].any():
             combined_df.loc[fill_mask[col], col] = carb_df.loc[fill_mask[col], col]
 
-    # log information about the combination
     nan_filled = fill_mask.sum().sum()
     if nan_filled > 0:
         logger.info(f"Filled {nan_filled} NaN values by combining dataframes")
 
     return combined_df
-
-
-def _convert_ph_scales(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert pHnbs to pHtot where needed."""
-    mask = (
-        df["phtot"].isna()
-        & (df["phnbs"].notna() | df["phsws"].notna())
-        & df["temp"].notna()
-    )
-    df.loc[mask, "phtot"] = df.loc[mask].apply(
-        lambda row: cbh.pH_scale_converter(
-            pH=row["phnbs"] if pd.notna(row["phnbs"]) else row["phsws"],
-            scale="NBS" if pd.notna(row["phnbs"]) else "SWS",
-            Temp=row["temp"],
-            Sal=row["sal"] if pd.notna(row["sal"]) else 35,
-        ).get("pHtot", None),
-        axis=1,
-    )
-    return df
 
 
 def _calculate_missing_phtot(df: pd.DataFrame) -> pd.DataFrame:
@@ -116,6 +88,9 @@ def _calculate_missing_phtot(df: pd.DataFrame) -> pd.DataFrame:
             ).pHtot[0],
             axis=1,
         )
+    logger.info(f"Calculated {mask_dic.sum()} missing pHt value(s) using DIC/TA")
+    logger.info(f"Calculated {mask_pco2.sum()} missing pHt value(s) using pCO2/TA")
+    logger.info(f"Populated {mask_dic.sum() + mask_pco2.sum()} missing pHt value(s)")
     return df
 
 
@@ -140,3 +115,24 @@ def calculate_carb_chem(row: pd.Series, out_values: list) -> dict:
     except Exception as e:
         logger.error(f"Error in calculate_carb_chem: {e}")
         return {key: None for key in out_values}
+
+
+def _convert_ph_scales(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert pHnbs to pHtot where needed."""
+    mask = (
+        df["phtot"].isna()
+        & (df["phnbs"].notna() | df["phsws"].notna())
+        & df["temp"].notna()
+    )
+    df.loc[mask, "phtot"] = df.loc[mask].apply(
+        lambda row: cbh.pH_scale_converter(
+            pH=row["phnbs"] if pd.notna(row["phnbs"]) else row["phsws"],
+            scale="NBS" if pd.notna(row["phnbs"]) else "SWS",
+            Temp=row["temp"],
+            Sal=row["sal"] if pd.notna(row["sal"]) else 35,
+        ).get("pHtot", None),
+        axis=1,
+    )
+    logger.info(f"Calculated {mask.sum()} missing pHt value(s) using pHnbs/pHsws")
+
+    return df
