@@ -9,6 +9,41 @@ If you're interested in running the analysis yourself, read on!
 
 ### How to run the analysis
 
+0. <ins>Create</ins> a virtual environment with the necessary packages
+
+
+To get started with the analysis, you need to set up a Python environment with the correct dependencies.
+We recommend using **either** Python virtual environments (`venv`) **or** `conda` environments. All required dependencies are specified in `pyproject.toml`.
+
+#### **Option 1: Using `venv` (standard Python virtual environment)**
+First, make sure you have Python 3.10+ installed.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install .    # Installs dependencies from pyproject.toml
+```
+
+#### **Option 2: Using `conda`**
+If you prefer `conda` (such as Anaconda or Miniconda):
+
+```bash
+conda create -n calc_meta python=3.10
+conda activate calc_meta
+pip install .              # Installs dependencies from pyproject.toml
+```
+
+> **Note**
+> - The command `pip install .` reads your `pyproject.toml` and installs all runtime (and optionally dev) dependencies.
+> - If you run into installation issues with packages that need compilation (e.g., `pyarrow`, `scipy`), try installing the relevant dependencies via `conda` first, then run `pip install .` again.
+> - For reproducible builds or pinned versions, edit `pyproject.toml` accordingly.
+
+You're now ready to proceed with data download and organisation!
+
+
+
+
 1. <ins>Download</ins> the necessary datasets
 
 The paper and its visualisations make use of a number of datasets. Not all are required for every figure. In order of importance (number of figures relying on them) the datasets are:
