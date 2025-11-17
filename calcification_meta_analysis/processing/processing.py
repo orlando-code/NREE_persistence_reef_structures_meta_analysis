@@ -1,5 +1,6 @@
 # general
 import unicodedata
+from pathlib import Path
 
 import cbsyst.helpers as cbh
 import numpy as np
@@ -159,7 +160,7 @@ def aggregate_treatments_with_individual_samples(df: pd.DataFrame) -> pd.DataFra
     )
     # remove rows with n=1
     df_no_ones = df[df["n"] != 1]
-    # Append the aggregated data to the DataFrame
+    # append the aggregated data to the DataFrame
     df_no_ones = pd.concat([df_no_ones, aggregated_df], ignore_index=True)
     return df_no_ones
 
@@ -178,9 +179,7 @@ def calc_sd_from_se(se: float, n: int) -> float:
 
 
 ### raw file wrangling
-def preprocess_df(
-    df: pd.DataFrame, selection_dict: dict = {"include": "yes"}
-) -> pd.DataFrame:
+def preprocess_df(df: pd.DataFrame) -> pd.DataFrame:
     """Clean dataframe fields and standardise for future processing"""
     ### basic cleaning
     df.columns = df.columns.str.normalize("NFKC").str.replace(
@@ -227,13 +226,6 @@ def preprocess_df(
     df[["coords", "cleaned_coords"]] = df.groupby("doi")[
         ["coords", "cleaned_coords"]
     ].ffill()  # fill only as far as the next DOI
-
-    if selection_dict:  # filter for selected values
-        for key, value in selection_dict.items():
-            if isinstance(value, list):
-                df = df[df[key].isin(value)]
-            else:
-                df = df[df[key] == value]
 
     ### deal with missing n
     if (
@@ -395,156 +387,6 @@ def assign_treatment_groups(
     return df
 
 
-def assign_treatment_groups_multilevel(
-    df: pd.DataFrame, t_atol: float = 0.5, pH_atol: float = 0.08, irr_atol: float = 30
-) -> pd.DataFrame:
-    """
-    Assign treatment groups to each row based on temperature and pH values,
-    recognizing multiple levels of treatments.
-
-    Args:
-        df (pd.DataFrame): Input dataframe with columns 'doi', 'temp', 'phtot', etc.
-        t_atol (float): Absolute tolerance for temperature comparison.
-        pH_atol (float): Absolute tolerance for pH comparison.
-        irr_atol (float): Absolute tolerance for irradiance grouping.
-
-    Returns:
-        pd.DataFrame: Original dataframe with added 'treatment_group' and 'treatment_level' columns.
-    """
-    result_df = df.copy()  # avoid modifying original dataframe
-
-    # Pre-initialize columns with correct types
-    result_df["treatment_group"] = pd.NA
-    result_df["treatment_level_t"] = pd.NA
-    result_df["treatment_level_ph"] = pd.NA
-    result_df["irr_group"] = pd.NA
-
-    # process all DOIs in one pass for irradiance grouping
-    for doi, study_df in result_df.groupby(
-        "doi"
-    ):  # group irradiance values by study (DOI)
-        # Apply irradiance grouping within each study
-        grouped_df = group_irradiance(study_df, atol=irr_atol)
-        # Update the result dataframe with the grouped irradiance values
-        result_df.loc[grouped_df.index, "irr_group"] = grouped_df["irr_group"]
-
-    # Create a list to store processed dataframes
-    processed_dfs = []
-
-    # Group by relevant factors to process in chunks
-    groupby_cols = ["doi", "irr_group", "species_types"]
-    for (_, irr_group, _), group_df in tqdm(
-        result_df.groupby(groupby_cols, dropna=False),
-        desc="Assigning treatment groups",
-        total=result_df.groupby(groupby_cols, dropna=False).ngroups,
-    ):
-        if len(group_df) <= 1:  # skip if too few samples
-            continue
-
-        # find control values (min T, max pH)
-        control_T = (
-            group_df["temp"].min() if not group_df["temp"].isna().all() else None
-        )
-        control_pH = (
-            group_df["phtot"].max() if not group_df["phtot"].isna().all() else None
-        )
-
-        # cluster temperature values
-        t_values = group_df["temp"].dropna().unique()
-        t_clusters = cluster_values(t_values, t_atol)
-
-        # cluster pH values
-        ph_values = group_df["phtot"].dropna().unique()
-        ph_clusters = cluster_values(ph_values, pH_atol)
-
-        # map each value to its cluster index
-        t_mapping = {
-            val: cluster_idx
-            for cluster_idx, cluster in enumerate(t_clusters)
-            for val in cluster
-        }
-        ph_mapping = {
-            val: cluster_idx
-            for cluster_idx, cluster in enumerate(ph_clusters)
-            for val in cluster
-        }
-
-        # Process this group
-        treatments_df = assign_treatment_groups(
-            group_df, control_T, control_pH, t_mapping, ph_mapping, irr_group
-        )
-        processed_dfs.append(treatments_df)
-
-    if processed_dfs:
-        combined_df = pd.concat(processed_dfs)  # concatenating on index
-        for col in [
-            "treatment_group",
-            "treatment_level_t",
-            "treatment_level_ph",
-        ]:  # update original DataFrame using loc indexing (more efficient)
-            result_df.loc[combined_df.index, col] = combined_df[col]
-    # vectorized updating
-    conditions = [
-        (result_df["treatment_group"] == "cTcP"),
-        (
-            result_df["treatment_group"].str.contains("tT", na=False)
-            & result_df["treatment_group"].str.contains("tP", na=False)
-        ),
-        (result_df["treatment_group"].str.contains("tT", na=False)),
-        (result_df["treatment_group"].str.contains("tP", na=False)),
-    ]
-    choices = ["control", "temp_phtot", "temp", "phtot"]
-    result_df["treatment"] = np.select(conditions, choices, default="unknown")
-    # Replace 'unknown' with np.nan after the select operation
-    result_df.loc[result_df["treatment"] == "unknown", "treatment"] = np.nan
-    return result_df
-
-
-def calculate_dvar(
-    data: pd.DataFrame, treatment: str | list[str] = ["temp", "phtot"]
-) -> pd.DataFrame:
-    """Calculate the dvar for the data.
-    N.B. this isn't useful for determining the outliers, which have small dCdV
-    """
-    # for each treatment, calculate the change in st_calcification wrt the control
-    # then calculate the dvar for each treatment
-    if isinstance(treatment, str):
-        treatment = [treatment]
-    if "temp_phtot" in treatment:
-        treatment = ["temp", "phtot"]
-    for t in treatment:
-        if t == "temp":
-            t_value = "delta_t"
-        elif t == "phtot":
-            t_value = "delta_ph"
-        else:
-            t_value = t
-        d_calcification = (
-            data["st_treatment_calcification"] - data["st_control_calcification"]
-        )
-        # replace any data[t_value] values that are less than 0.01 with 0 (machine precision failing us)
-        # replace any values less than 0.01 with 0 (in absolute value)
-        data.loc[abs(data[t_value]) < 0.1, t_value] = 0
-
-        out = d_calcification / data[t_value]
-        out = out.replace([np.inf, -np.inf], 0)
-        out = out.replace(np.nan, 0)
-        # Avoid repeated insertions to prevent DataFrame fragmentation
-        # Collect all dvar columns in a dict, then assign at once if multiple treatments
-        if "dvar_columns" not in locals():
-            dvar_columns = {}
-        dvar_columns[f"dvar_{t}"] = out
-
-        # If this is the last treatment, assign all at once
-        if t == treatment[-1]:
-            dvar_df = pd.DataFrame(dvar_columns)
-            # Align index to data
-            dvar_df.index = data.index
-            data = pd.concat([data, dvar_df], axis=1)
-
-    return data
-
-
 ### climatology
 def process_climatology_csv(fp: str, index_col: str = "doi") -> pd.DataFrame:
     df = pd.read_csv(fp).drop(columns=["data_ID", "Unnamed: 0"])
@@ -594,7 +436,7 @@ def convert_climatology_csv_to_multiindex(
         how="left",
         suffixes=("", "_right"),
     )
-    # Remove any columns ending with '_right' or the 'index_right' column specifically
+    # remove any columns ending with '_right' or the 'index_right' column specifically
     columns_to_drop = [
         col for col in df.columns if col.endswith("_right") or col == "index_right"
     ]
@@ -605,9 +447,10 @@ def convert_climatology_csv_to_multiindex(
 
 
 def generate_location_specific_anomalies(df: pd.DataFrame, scenario_var: str = "sst"):
+    """Generate location-specific anomalies for each location in the dataframe"""
     df = (
         df.sort_index()
-    )  # Sort the index to avoid PerformanceWarning about lexsort depth
+    )  # sort the index to avoid PerformanceWarning about lexsort depth
     locations = df.index.unique()
     anomaly_rows = []  # to hold newmods inputs
     metadata_rows = []  # to track what each row corresponds to
@@ -683,282 +526,77 @@ def generate_location_specific_anomalies(df: pd.DataFrame, scenario_var: str = "
 
 
 def process_emissions_sheet(sheet_df: pd.DataFrame, scenario_name: str) -> pd.DataFrame:
-    # Process the sheet DataFrame
+    """Process the emissions sheet DataFrame as provided from supplementary data of https://doi.org/10.5194/gmd-13-3571-2020."""
     sheet_df = sheet_df[["Gas", "CO2"]].iloc[3:]  # years labelled 'Gas'
     sheet_df.rename(columns={"Gas": "year", "CO2": scenario_name}, inplace=True)
     sheet_df["year"] = pd.to_numeric(sheet_df["year"], errors="coerce")
     return sheet_df
 
 
-### DEPRECATED
-# def assign_treatment_groups_multilevel(df: pd.DataFrame, t_atol: float=0.5, pH_atol: float=0.05, irr_atol: float=30) -> pd.DataFrame:
-#     """
-#     Assign treatment groups to each row based on temperature and pH values,
-#     recognizing multiple levels of treatments.
-
-#     Args:
-#         df (pd.DataFrame): Input dataframe with columns 'doi', 'temp', 'phtot', etc.
-#         t_atol (float): Absolute tolerance for temperature comparison.
-#         pH_atol (float): Absolute tolerance for pH comparison.
-#         irr_rtol (float): Relative tolerance for irradiance grouping.
-
-#     Returns:
-#         pd.DataFrame: Original dataframe with added 'treatment_group' and 'treatment_level' columns.
-#     """
-#     result_df = df.copy()   # avoid modifying original dataframe
-
-#     # initialize treatment columns
-#     result_df['treatment_group'] = pd.Series(dtype='object')
-#     result_df['treatment_level_t'] = pd.Series(dtype='object')
-#     result_df['treatment_level_ph'] = pd.Series(dtype='object')
-#     result_df['irr_group'] = pd.Series(dtype='object')
-
-#     for study_doi, study_df in tqdm(df.groupby('doi'), desc="Assigning treatment groups", total=len(df['doi'].unique())):
-#         study_with_irr_groups = group_irradiance(study_df, atol=irr_atol)   # group irradiance treatments
-
-#         # process each (irradiance group, species) combination separately
-#         for (irr_group, species), group_df in study_with_irr_groups.groupby(['irr_group', 'species_types']):
-#             if len(group_df) <= 1:  # skip if too few samples
-#                 continue
-
-#             # find control values (min T, max pH)
-#             control_T = group_df['temp'].min() if not group_df['temp'].isna().all() else None
-#             control_pH = group_df['phtot'].max() if not group_df['phtot'].isna().all() else None
-
-#             # cluster temperature values
-#             t_values = group_df['temp'].dropna().unique()
-#             t_clusters = cluster_values(t_values, t_atol)
-
-#             # cluster pH values
-#             ph_values = group_df['phtot'].dropna().unique()
-#             ph_clusters = cluster_values(ph_values, pH_atol)
-
-#             # map each value to its cluster index
-#             t_mapping = {val: cluster_idx for cluster_idx, cluster in enumerate(t_clusters) for val in cluster}
-#             ph_mapping = {val: cluster_idx for cluster_idx, cluster in enumerate(ph_clusters) for val in cluster}
-
-#             treatments_df = assign_treatment_groups(group_df, control_T, control_pH, t_mapping, ph_mapping, irr_group)
-
-#             # fill in result_df values with results from treatments_df
-#             result_df = result_df.combine_first(treatments_df)
-
-#     result_df['treatment'] = result_df['treatment_group'].apply(
-#         lambda x: 'temp_phtot' if isinstance(x, str) and 'tT' in x and 'tP' in x else
-#                  'temp' if isinstance(x, str) and 'tT' in x else
-#                  'phtot' if isinstance(x, str) and 'tP' in x else
-#                  'control' if isinstance(x, str) and x == 'cTcP' else np.nan
-#     )
-#     return result_df
+def load_and_format_coral_cover(
+    filepath: Path = config.data_dir / "coral_cover_locs.xlsx",
+) -> pd.DataFrame:
+    """Load coral cover data and reshape for analysis."""
+    df = (
+        pd.read_excel(filepath, sheet_name="Sheet1")
+        .infer_objects()
+        .astype("float64", errors="raise")
+        .drop_duplicates()
+    )
+    # melt and extract features
+    id_vars = ["Reef", "ReefLat", "ReefLon"]
+    df_long = df.melt(id_vars=id_vars, var_name="metric", value_name="value")
+    df_long[["year", "coral_type", "scenario"]] = df_long["metric"].str.extract(
+        r"(\d{4})\s+(Mounding|Branching)\s+(rcp\d{2})"
+    )
+    df_long = df_long.drop(columns="metric")
+    df_long["year"] = df_long["year"].astype(int)
+    # standardize column names
+    df_long = df_long.rename(
+        columns={"ReefLat": "lat", "ReefLon": "lon", "Reef": "reef_id"}
+    )
+    df_long.columns = df_long.columns.str.lower()
+    df_long = df_long.apply(
+        lambda col: col.str.lower() if col.dtype == "object" else col
+    )
+    # wide table for comparisons between predicted coral cover in2050/2100
+    wide_df = df_long.pivot_table(
+        index=["reef_id", "scenario", "coral_type", "lat", "lon"],
+        columns="year",
+        values="value",
+        aggfunc="first",
+    )
+    return wide_df
 
 
-# def interpolate_and_extrapolate_predictions(df, target_year=2100):
-#     grouping_cols = ["core_grouping", "scenario", "percentile", "time_frame"]
-#     value_cols = [col for col in df.columns if col not in grouping_cols]
-
-#     # Filter only mean percentile
-#     df = df[df["percentile"] == "mean"].copy()
-
-#     # Make the full year grid (including up to 2100)
-#     all_years = np.arange(df["time_frame"].min(), target_year + 1)
-#     unique_groups = df[["core_grouping", "scenario", "percentile"]].drop_duplicates()
-#     full_grid = unique_groups.merge(
-#         pd.DataFrame({"time_frame": all_years}), how="cross"
-#     )
-
-#     # Merge full grid with existing predictions
-#     df_full = pd.merge(
-#         full_grid,
-#         df,
-#         on=["core_grouping", "scenario", "percentile", "time_frame"],
-#         how="left",
-#     )
-
-#     # Now interpolate/extrapolate for each group
-#     for (core_grouping, scenario, percentile), group_df in df_full.groupby(
-#         ["core_grouping", "scenario", "percentile"]
-#     ):
-#         mask = (
-#             (df_full["core_grouping"] == core_grouping)
-#             & (df_full["scenario"] == scenario)
-#             & (df_full["percentile"] == percentile)
-#         )
-
-#         available_years = group_df.dropna(subset=value_cols)["time_frame"].values
-
-#         if len(available_years) < 2:
-#             continue  # Not enough points to interpolate
-
-#         for value_col in value_cols:
-#             available_vals = group_df.dropna(subset=[value_col])[value_col].values
-
-#             if len(available_vals) < 2:
-#                 continue  # Not enough data
-
-#             # Fit spline
-#             spline = interpolate.make_interp_spline(
-#                 available_years, available_vals, k=min(2, len(available_vals) - 1)
-#             )
-
-#             # Predict for all years
-#             df_full.loc[mask, value_col] = spline(all_years)
-
-#     return df_full
-
-
-# def populate_carbonate_chemistry_old(
-#     fp: str, sheet_name: str = "all_data", selection_dict: dict = {"include": "yes"}
-# ) -> pd.DataFrame:
-#     df = process_raw_data(
-#         pd.read_excel(fp, sheet_name=sheet_name),
-#         require_results=False,
-#         selection_dict=selection_dict,
-#     )
-#     ### load measured values
-#     print("Loading measured values...")
-#     measured_df = file_ops.get_highlighted(
-#         fp, sheet_name=sheet_name
-#     )  # keeping all cols
-#     measured_df = preprocess_df(measured_df, selection_dict=selection_dict)
-#     ### convert nbs values to total scale using cbsyst     # TODO: implement uncertainty propagation
-#     # if one of ph is provided, ensure total ph is calculated
-#     # Only convert pHnbs to pHtot if pHtot is NaN and pHnbs is available
-#     mask_missing_phtot_with_nbs = (
-#         measured_df["phtot"].isna()
-#         & measured_df["phnbs"].notna()
-#         & measured_df["temp"].notna()
-#     )
-#     measured_df.loc[mask_missing_phtot_with_nbs, "phtot"] = measured_df[
-#         mask_missing_phtot_with_nbs
-#     ].apply(
-#         lambda row: cbh.pH_scale_converter(
-#             pH=row["phnbs"],
-#             scale="NBS",
-#             Temp=row["temp"],
-#             Sal=row["sal"] if pd.notna(row["sal"]) else 35,
-#         ).get("pHtot", None),
-#         axis=1,
-#     )
-
-#     # Only calculate pHtot from DIC and TA if pHtot is still NaN and required parameters are available
-#     mask_missing_phtot_with_carb = (
-#         measured_df["phtot"].isna()
-#         & measured_df["dic"].notna()
-#         & measured_df["ta"].notna()
-#         & measured_df["temp"].notna()
-#     )
-#     if mask_missing_phtot_with_carb.any():
-#         measured_df.loc[mask_missing_phtot_with_carb, "phtot"] = measured_df[
-#             mask_missing_phtot_with_carb
-#         ].apply(
-#             lambda row: cb.Csys(
-#                 TA=row["ta"],
-#                 DIC=row["dic"],
-#                 T_in=row["temp"],
-#                 S_in=row["sal"] if pd.notna(row["sal"]) else 35,
-#             ).pHtot[0],
-#             axis=1,
-#         )
-#     # if phtot is still NaN, calculate from other parameters.
-#     mask_missing_phtot_with_alt_carb = (
-#         measured_df["phtot"].isna()
-#         & measured_df["pco2"].notna()
-#         & measured_df["ta"].notna()
-#         & measured_df["temp"].notna()
-#     )
-#     if mask_missing_phtot_with_alt_carb.any():
-#         measured_df.loc[mask_missing_phtot_with_alt_carb, "phtot"] = measured_df[
-#             mask_missing_phtot_with_alt_carb
-#         ].apply(
-#             lambda row: cb.Csys(
-#                 TA=row["ta"],
-#                 pCO2=row["pco2"],
-#                 T_in=row["temp"],
-#                 S_in=row["sal"] if pd.notna(row["sal"]) else 35,
-#             ).pHtot[0],
-#             axis=1,
-#         )
-
-#     ### calculate carbonate chemistry
-#     carb_metadata = file_ops.read_yaml(config.resources_dir / "mapping.yaml")
-#     carb_chem_cols = carb_metadata["carbonate_chemistry_cols"]
-#     out_values = carb_metadata["carbonate_chemistry_params"]
-#     carb_df = measured_df[carb_chem_cols].copy()
-
-#     # apply carbonate chemistry calculation row-wise
-#     tqdm.pandas(desc="Calculating carbonate chemistry")
-#     carb_df.loc[:, out_values] = carb_df.progress_apply(
-#         lambda row: pd.Series(calculate_carb_chem(row, out_values)), axis=1
-#     )
-#     return df.combine_first(carb_df)
-
-
-# def process_raw_data(
-#     df: pd.DataFrame,
-#     require_results: bool = True,
-#     selection_dict: dict = {"include": "yes"},
-#     ph_conversion: bool = True,
-# ) -> pd.DataFrame:
-#     """Process raw data from the spreadsheet to prepare for analysis
-#     Args:
-#         df (pd.DataFrame): DataFrame containing raw data
-#         require_results (bool): Whether to require results for processing
-#         selection_dict (dict): Dictionary of selections to filter the DataFrame
-
-#     Returns:
-#         pd.DataFrame: Processed DataFrame
-#     """
-#     df = preprocess_df(df, selection_dict=selection_dict)  # general processing
-#     ### location processsing
-#     df = locations.uniquify_multilocation_study_dois(
-#         df
-#     )  # for dois with multiple locations
-#     df = locations.assign_coordinates(df)  # assign coordinates to locations
-#     locations.save_locations_information(df)  # save locations information
-#     df = locations.assign_ecoregions(df)  # assign ecoregions to locations
-
-#     ### taxonomy
-#     df = taxonomy.assign_taxonomical_info(
-#         df
-#     )  # create family, genus, species, and functional group columns from species binomials
-
-#     ### units
-#     df["irr"] = df.apply(
-#         lambda row: units.irradiance_conversion(row["ipar"], "PAR")
-#         if pd.notna(row["ipar"])
-#         else row["irr"],
-#         axis=1,
-#     )  # convert integrated irradiance to irradiance
-
-#     if ph_conversion:
-#         df["hplus"] = df.apply(
-#             lambda row: units.ph_to_hplus(row["phtot"])
-#             if pd.notna(row["phtot"])
-#             else None,
-#             axis=1,
-#         )  # convert pH to H+ concentration in μmol/kg seawater
-
-#     if require_results:  # keep only rows with all the necessary data
-#         df = df.dropna(subset=["n", "calcification"])
-
-#     # calculate calcification standard deviation
-#     df["calcification_sd"] = df.apply(
-#         lambda row: calc_sd_from_se(row["calcification_se"], row["n"])
-#         if pd.notna(row["calcification_se"]) and pd.notna(row["n"])
-#         else row["calcification_sd"],
-#         axis=1,
-#     )
-
-#     # calculate standarised calcification rates and relevant units
-#     df = units.map_units(df)  # map units to standardised units
-#     df[["st_calcification", "st_calcification_sd", "st_calcification_unit"]] = df.apply(
-#         lambda x: pd.Series(
-#             units.rate_conversion(
-#                 x["calcification"], x["calcification_sd"], x["st_calcification_unit"]
-#             )
-#         )
-#         if pd.notna(x["calcification"]) and pd.notna(x["st_calcification_unit"])
-#         else pd.Series(["", "", ""]),
-#         axis=1,
-#     )
-
-#     return df
+def compute_cover_difference(wide_df: pd.DataFrame) -> pd.DataFrame:
+    """Compute cover change between 2050 and 2100 and order by mounding coral loss."""
+    df_2050 = wide_df[2050].reset_index()
+    df_2100 = wide_df[2100].reset_index()
+    df_diff = pd.merge(
+        df_2050,
+        df_2100,
+        on=["reef_id", "scenario", "lat", "lon", "coral_type"],
+        suffixes=("_2050", "_2100"),
+    )
+    df_diff["diff"] = df_diff[2100] - df_diff[2050]
+    # map labels of RCP to SSP for consistency (this is fairly approximate since rcp and ssp are not exactly the same)
+    rcp_ssp_map = {"rcp85": "ssp585", "rcp45": "ssp245", "rcp26": "ssp126"}
+    df_diff["scenario"] = df_diff["scenario"].map(rcp_ssp_map)
+    # add scenario-wide std, merge in
+    diff_std = df_diff.groupby("scenario")["diff"].std().reset_index()
+    df_diff = pd.merge(df_diff, diff_std, on="scenario", suffixes=("", "_std"))
+    # sort reefs by mounding mean
+    mounding_means = (
+        df_diff[df_diff["coral_type"] == "mounding"]
+        .groupby("reef_id", as_index=False)["diff"]
+        .mean()
+    )
+    sorted_reef_ids = mounding_means.sort_values(by="diff", ascending=False)["reef_id"]
+    # adjust for plotting
+    df_diff["diff"] = df_diff["diff"] * 100
+    df_diff["reef_id_cat"] = pd.Categorical(
+        df_diff["reef_id"], categories=sorted_reef_ids, ordered=True
+    )
+    df_diff["cover_2100"] = df_diff[2100] * 100
+    return df_diff
