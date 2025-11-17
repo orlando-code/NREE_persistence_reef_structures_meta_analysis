@@ -1,19 +1,3 @@
-#!/usr/bin/env python3
-"""
-Unified Metafor Model Implementation
-
-This module provides a streamlit-ready, unified implementation of the metafor
-model that combines the best features from both meta_regression.py and
-hybrid_metafor_adapter.py.
-
-Key Features:
-- Safe rpy2 context management for Streamlit compatibility
-- Python-friendly model component extraction
-- Comprehensive error handling
-- Support for both simple and advanced model operations
-- Unified API for prediction and analysis
-"""
-
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -41,11 +25,7 @@ logging.basicConfig(level=logging.INFO)
 
 class MetaforModel:
     """
-    Metafor Model with Streamlit compatibility and comprehensive functionality.
-
-    This class combines the best features from both the original MetaforModel and
-    the StreamlitMetaforAdapter, providing a single interface for metafor operations
-    with proper context management and error handling.
+    Metafor Model allowing interface with native metafor R package.
     """
 
     def __init__(
@@ -53,8 +33,8 @@ class MetaforModel:
         df: pd.DataFrame,
         effect_type: str = "st_relative_calcification",
         effect_type_var: Optional[str] = None,
-        treatment: Optional[str] = None,
         formula: Optional[str] = None,
+        treatment: Optional[str] = ["phtot", "temp", "temp_phtot"],
         random: str = "~ 1 | doi/ID",
         required_columns: Optional[List[str]] = None,
         save_summary: bool = False,
@@ -63,7 +43,8 @@ class MetaforModel:
         process_data: bool = True,
         verbose: bool = True,
         metafor_model_kwargs: Optional[dict] = None,
-        cooks_distance: bool = False,
+        cooks_distance_type: bool = False,
+        cooks_distance_threshold_type: str = "liberal",
     ):
         """
         Initialize the unified metafor model.
@@ -93,19 +74,18 @@ class MetaforModel:
         self.var_threshold = var_threshold
         self.fitted = False
         self.metafor_model_kwargs = metafor_model_kwargs
-        self.cooks_distance = cooks_distance
-        # Model storage
+        self.cooks_distance_type = cooks_distance_type
+        self.cooks_distance_threshold_type = cooks_distance_threshold_type
         self.r_model = None  # R model object
         self.model_dict = {}  # Python-friendly model data
         self.summary = None
 
-        # Initialize formula and components
+        # initialize formula and components
         try:
             self.formula = self._get_model_formula() if formula is None else formula
             self.formula_components = self._get_formula_components()
             self.n_params = analysis_utils.get_number_of_params(self.formula_components)
 
-            # Get required columns
             self.required_columns = analysis_utils._get_required_columns(
                 self.effect_type,
                 self.formula_components,
@@ -113,13 +93,13 @@ class MetaforModel:
                 required_columns,
             )
 
-            # Prepare data if requested
+            # prepare data if requested
             if process_data:
                 self.processed_df = self._prepare_data()
             else:
                 self.processed_df = self.df
 
-            # Set up R DataFrame using safe context
+            # set up R DataFrame using safe context
             self._setup_r_dataframe()
 
         except Exception as e:
@@ -131,6 +111,11 @@ class MetaforModel:
             logger.info(f"Formula: {self.formula}")
             logger.info(f"Treatment: {self.treatment}")
             logger.info(f"Data shape: {self.processed_df.shape}")
+
+    def _check_cooks_distance_type(self) -> None:
+        """Check if the cooks distance type is valid."""
+        if self.cooks_distance_type not in ["native", "OLS"]:
+            raise ValueError(f"Invalid cooks distance type: {self.cooks_distance_type}")
 
     def _get_model_formula(self) -> str:
         """Generate model formula using analysis utilities."""
@@ -152,9 +137,10 @@ class MetaforModel:
             self.effect_type_var,
             self.treatment,
             self.formula_components,
-            self.dvar_threshold,
-            self.var_threshold,
             self.verbose,
+            apply_approx_cooks_threshold=True
+            if self.cooks_distance_type == "OLS"
+            else False,
         )
 
     def _setup_r_dataframe(self) -> None:
@@ -162,10 +148,10 @@ class MetaforModel:
         with r_context_handler.RContextManager() as r_ctx:
             pandas2ri = r_ctx["pandas2ri"]
 
-            # Subset data to required columns
+            # subset data to required columns
             df_processed = self.processed_df[self.required_columns]
 
-            # Validate factor moderators
+            # validate factor moderators
             for mod in self.formula_components["factor_terms"]:
                 if self.processed_df[mod].nunique() < 2:
                     raise ValueError(
@@ -201,9 +187,7 @@ class MetaforModel:
                 if self.verbose:
                     logger.info(f"Fitting model with formula: {fit_formula}")
 
-                # remove points exceeding the cooks distance threshold
-
-                # Fit the model
+                # fit the model
                 self.r_model = metafor_r.rma_mv(
                     yi=ro.FloatVector(self.df_r.rx2(self.effect_type)),
                     V=ro.FloatVector(self.df_r.rx2(self.effect_type_var)),
@@ -211,21 +195,29 @@ class MetaforModel:
                     mods=ro.Formula(fit_formula),
                     random=ro.Formula(self.random),
                     method="REML",
-                    # **self.metafor_model_kwargs,
                 )
                 with lc(ro.default_converter + p2ri.converter):
                     r_df = ro.conversion.py2rpy(self.df_processed)
 
-                if self.cooks_distance:
+                if self.cooks_distance_type == "native":
                     self.cooks_distances = self.calculate_cooks_distance()
                     # remove points exceeding the cooks distance threshold
                     cooks_threshold = analysis.calc_cooks_threshold(
-                        self.cooks_distances, nparams=self.n_params
+                        self.cooks_distances,
+                        nparams=self.n_params,
+                        threshold_type=self.cooks_distance_threshold_type,
                     )
+                    logger.info(f"Cook's distance threshold: {cooks_threshold:.2f}")
                     self.cooks_threshold = cooks_threshold
+                    num_exceeding_cooks = len(self.df_processed) - len(
+                        self.df_processed[self.cooks_distances < self.cooks_threshold]
+                    )
                     self.df_processed = self.df_processed[
                         self.cooks_distances < self.cooks_threshold
                     ]
+                    logger.info(
+                        f"Removed {num_exceeding_cooks} {'point' if num_exceeding_cooks == 1 else 'points'} exceeding the cooks distance threshold"
+                    )
 
                     # re-fit model
                     self.r_model = metafor_r.rma_mv(
@@ -235,16 +227,16 @@ class MetaforModel:
                         mods=ro.Formula(fit_formula),
                         random=ro.Formula(self.random),
                         method="REML",
-                        # **self.metafor_model_kwargs,
                     )
 
-                # Step 2: Set up global environment with data and call
+                # set up global environment with data and call
                 ro.globalenv["d"] = r_df
-                ro.globalenv["cl"] = self.r_model["call"]
+                ro.globalenv["cl"] = r_context_handler.index_named_list(
+                    self.r_model, "call"
+                )
                 with lc(ro.default_converter):  # safe generation of summary
-                    base = ro.packages.importr("base")
                     r_model_native = ro.r("local({ cl$data <- d; eval(cl) })")
-                    self._r_summary = base.summary(r_model_native)
+                    self._r_summary = base_r.summary(r_model_native)
 
                 self.fitted = True
 
@@ -272,39 +264,30 @@ class MetaforModel:
             r_df = ro.conversion.py2rpy(self.df_processed)
 
         ro.globalenv["d"] = r_df
-        ro.globalenv["cl"] = self.r_model["call"]
+        ro.globalenv["cl"] = r_context_handler.index_named_list(self.r_model, "call")
 
         with lc(ro.default_converter):
             return ro.r("local({ cl$data <- d; eval(cl) })")
 
-    def calculate_cooks_distance(self, progbar=True, parallel="multicore", ncpus=24):
+    def calculate_cooks_distance(self, progbar=True, parallel="multicore", ncpus=64):
         """Calculate Cook's distance for the fitted model using metafor's cooks.distance function."""
         with r_context_handler.RContextManager() as r_ctx:
             metafor_r = r_context_handler.safe_import_r_package("metafor")
 
-            # Get native R model
+            # get native R model
             r_model_native = self._get_native_r_model(r_ctx)
 
-            # Calculate Cook's distance with the native R model
+            logger.info(
+                "Calculating Cook's distance using metafor's cooks.distance function"
+            )
+            # calculate Cook's distance with the native R model
             cooks = metafor_r.cooks_distance_rma_mv(
                 r_model_native, progbar=progbar, parallel=parallel, ncpus=ncpus
             )
 
-            # Convert to numpy array for easier handling in Python
+            # convert to numpy array for easier handling in Python
             cooks_array = np.array(cooks)
             return cooks_array
-
-    def cooks_distance_exclusion(self, r_model, df_processed):
-        """Remove points exceeding the cooks distance threshold."""
-        # use native metafor cooks distance function
-        with r_context_handler.RContextManager() as r_ctx:
-            ro = r_ctx["ro"]
-            lc = r_ctx["localconverter"]
-            metafor_r = r_context_handler.safe_import_r_package("metafor")
-
-            with lc(ro.default_converter):
-                # This would need to be implemented based on your filtering logic
-                return metafor_r.cooks_distance_filter(r_model, df_processed)
 
     def _extract_model_components(self) -> None:
         """Extract model components into Python-friendly format."""
@@ -313,7 +296,7 @@ class MetaforModel:
             # extract coefficient values and their names
             self.extract_model_coefficient_info()
 
-            # Extract key statistics
+            # extract key statistics
             for key in [
                 "method",
                 "k",
@@ -330,11 +313,11 @@ class MetaforModel:
                 "fit.stats",
                 "sigma2",
             ]:
-                if key in self.r_model:
+                if key in self.r_model._NamedList__names:
                     try:
-                        value = self.r_model[key]
+                        value = r_context_handler.index_named_list(self.r_model, key)
                         if isinstance(value, pd.DataFrame):
-                            # Rename common rows for clarity
+                            # rename common rows for clarity
                             row_names = {"ll": "LogLik", "dev": "Deviance"}
                             value.index = [
                                 row_names.get(idx, idx) for idx in value.index
@@ -362,9 +345,11 @@ class MetaforModel:
             logger.warning(f"Failed to extract some model components: {e}")
 
     def extract_model_coefficient_info(self):
-        """Extract model coefficients from the OrdDict R model object for Streamlit use."""
+        """Extract model coefficients from the NamedList R model object."""
         try:
-            coefficients = np.array(list(self.r_model["beta"]))
+            coefficients = np.array(
+                list(r_context_handler.index_named_list(self.r_model, "beta"))
+            )
             coeff_names = extract_coefficient_names_from_model(self.r_model)
             result_coeffs = np.full(len(coeff_names), np.nan)
             # determine which columns in the dataframe have all zeros
@@ -389,12 +374,12 @@ class MetaforModel:
             logger.error(f"Failed to extract model coefficients: {e}")
 
     def get_coefficients_dataframe(self) -> pd.DataFrame:
-        """Get coefficients as a pandas DataFrame for Streamlit display."""
+        """Get coefficients as a pandas DataFrame"""
         if not self.fitted:
             raise RuntimeError("Model must be fitted before extracting coefficients.")
 
         try:
-            # Get coefficient values
+            # get coefficient values
             coef_values = (
                 self.coefficients.flatten()
                 if len(self.coefficients.shape) > 1
@@ -411,7 +396,7 @@ class MetaforModel:
                     val_list = [val_list] * len(coef_values)
                 self.model_dict[val_type] = val_list
 
-            # Use actual coefficient names if available
+            # use actual coefficient names if available
             if hasattr(self, "coefficient_names") and len(
                 self.coefficient_names
             ) == len(coef_values):
@@ -419,14 +404,14 @@ class MetaforModel:
             else:
                 row_names = [f"Coef {i + 1}" for i in range(len(coef_values))]
 
-            # Add significance indicators
+            # add significance indicators
             p_vals = self.model_dict["pval"]
             significance_stars = [
                 "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
                 for p in p_vals
             ]
 
-            # Create DataFrame with proper index
+            # create DataFrame with proper index
             return pd.DataFrame(
                 {
                     "Estimate": coef_values,
@@ -462,53 +447,12 @@ class MetaforModel:
         data.update(sigma_dict)
         return pd.DataFrame([data])
 
-    def get_model_summary_text(self) -> str:
-        """Generate a summary text for Streamlit display."""
-        stat_desc_strs = {
-            "k": "Number of samples",
-            "QE": "Residual heterogeneity",
-            "QM": "Model test statistic",
-            "LogLik": "Log-likelihood",
-            "AIC": "AIC (Akaike Information Criterion, smaller is better)",
-            "AICc": "AICc (AIC corrected for small sample size)",
-            "BIC": "BIC (Bayesian Information Criterion, smaller is better)",
-            "method": "Model fitting method",
-        }
-        if not self.fitted:
-            return "Model not fitted yet."
-
-        try:
-            # format model summary
-            lines = []
-            lines.append("Metafor Model Summary")
-            lines.append("=" * (len(self.formula) + len("Formula: ")))
-            lines.append(f"Formula: {self.formula}")
-            lines.append(f"Random Effects: {self.random}")
-
-            # get fit type
-            fit_type = self.model_dict.get("method", "REML")[0]
-            # add basic statistics
-            for key in stat_desc_strs:
-                val = self._summarize_model_data(key, fit_type=fit_type)
-                if isinstance(val, str):
-                    pass
-                elif isinstance(val, (int, float)):
-                    if key == "QE" or key == "QM":
-                        val = f"{val:.3f} (p: {self.model_dict.get(f'{key}p', [np.nan])[0]:.1e})"
-                    elif val is not None:
-                        val = f"{val:.3f}"
-                lines.append(f"{stat_desc_strs[key]}: {val}")
-
-            # Add coefficients table
-            # if "beta" in self.model_dict:
-            lines.append("\nCoefficients:")
-            coef_table = self._format_coefficients_table()
-            lines.append(coef_table)
-
-            return "\n".join(lines)
-
-        except Exception as e:
-            return f"Error generating summary: {e}"
+    def generate_model_fit_dataframe(self) -> pd.DataFrame:
+        """Generate a dataframe of model fit statistics."""
+        fit_type = self.model_dict.get("method", "REML")
+        keys = ["k", "LogLik", "Deviance", "AIC", "AICc", "BIC"]
+        values = [self._summarize_model_data(key, fit_type=fit_type) for key in keys]
+        return pd.DataFrame(dict(zip(keys, values)), index=[0])
 
     def _format_coefficients_table(self) -> str:
         """Format coefficients as a nice table for text display."""
@@ -516,7 +460,7 @@ class MetaforModel:
             coef_values = self.coefficients.flatten()
             n_coef = len(coef_values)
 
-            # Use actual coefficient names if available
+            # use actual coefficient names if available
             if (
                 hasattr(self, "coefficient_names")
                 and len(self.coefficient_names) == n_coef
@@ -529,9 +473,8 @@ class MetaforModel:
             else:
                 row_names = [f"Coef {i + 1}" for i in range(n_coef)]
 
-            # Extract all statistics
+            # extract all statistics
             stats = {}
-            # stats["Estimate"] = [f"{float(coef):.4f}" for coef in coef_values]
 
             for key, label in [
                 ("beta", "Estimate"),
@@ -543,19 +486,19 @@ class MetaforModel:
             ]:
                 values = self.model_dict.get(key, [np.nan] * n_coef)
                 if key == "pval":
-                    # Format p-values in scientific notation
+                    # format p-values in scientific notation
                     stats[label] = [
                         f"{float(val):.2e}" if not np.isnan(val) else "N/A"
                         for val in values[:n_coef]
                     ]
                 else:
-                    # Format other values to 4 decimal places
+                    # format other values to 4 decimal places
                     stats[label] = [
                         f"{float(val):.4f}" if not np.isnan(val) else "N/A"
                         for val in values[:n_coef]
                     ]
 
-            # Add significance indicators
+            # add significance indicators
             p_vals = self.model_dict.get("pval", [np.nan] * n_coef)
             stats["Sig"] = [
                 "***"
@@ -570,10 +513,10 @@ class MetaforModel:
                 for p in p_vals[:n_coef]
             ]
 
-            # Create the table
+            # create the table for display
             display_df = pd.DataFrame(stats, index=row_names)
 
-            # Format as string with proper spacing
+            # format as string with proper spacing
             table_str = display_df.to_string(
                 float_format=lambda x: f"{x:.4f}"
                 if isinstance(x, (int, float))
@@ -581,9 +524,9 @@ class MetaforModel:
                 justify="right",
             )
 
-            # Add significance legend
+            # add significance legend
             legend = "\nSignificance: *** p<0.001, ** p<0.01, * p<0.05, . p<0.1"
-            # specify any dropped coefficients (value zero)
+            # specify any dropped coefficients (all values were zero)
             if self.dropped_coefficients:
                 legend += (
                     "\n\nThe following coefficients since all values were zero: "
@@ -718,8 +661,10 @@ class MetaforModel:
         )
         # create matrix of mean values for all moderators (n_samples, n_moderators)
         X_means = np.zeros((n_points, len(self.coefficient_names)))
-        # Assign mean values from X.f to non-zero coefficients, zero to zero coefficients, skipping intercept
-        X_f_means = np.mean(np.array(self.r_model["X.f"]), axis=0)
+        # assign mean values from X.f to non-zero coefficients, zero to zero coefficients, skipping intercept
+        X_f_means = np.mean(
+            np.array(r_context_handler.index_named_list(self.r_model, "X.f")), axis=0
+        )
         non_zero_coeffs_indices = np.where(self.coefficients != 0)[0]
         for i in non_zero_coeffs_indices:
             X_means[:, i] = X_f_means[i]
@@ -734,12 +679,12 @@ class MetaforModel:
             Xnew[:, idx] = meta_regression.generate_interactive_moderator_value(
                 self.coefficient_names, Xnew, interaction_mod
             )
-        # nonlinear - FIXED: Handle polynomial terms properly
+        # handle polynomial terms
         nonlinear_mods = [mod for mod in self.coefficient_names if "I(" in mod]
         for nonlinear_mod in nonlinear_mods:
             if moderator_name in nonlinear_mod:
                 idx = self.coefficient_names.index(nonlinear_mod)
-                # Extract power from expressions like "I(delta_t^2)"
+                # extract power from expressions like "I(delta_t^2)"
                 if "^" in nonlinear_mod:
                     power_str = nonlinear_mod.split("^")[-1].replace(")", "")
                     try:
@@ -753,7 +698,7 @@ class MetaforModel:
                         print(f"⚠️ Could not parse power from {nonlinear_mod}")
                         Xnew[:, idx] = xs  # fallback to linear
                 else:
-                    # Handle other I() expressions
+                    # handle other I() expressions
                     Xnew[:, idx] = xs
 
         if self.verbose:
@@ -823,27 +768,22 @@ class MetaforModel:
         pred = X @ coefs
         pred_surface = pred.reshape(meshgrids[0].shape)
 
-        # Initialize results dictionary
+        # initialize results dictionary
         results = {"pred": pred_surface}
-        # Calculate standard errors
+        # calculate standard errors
         se = self._calculate_prediction_se(X)
         se_surface = se.reshape(meshgrids[0].shape)
 
         results["se"] = se_surface
-
-        # potential t-distribution taking into account degrees of freedom (n-k). Compare with Normal distribution. Pretty much identical.
 
         # calculate confidence intervals using t-distribution
         alpha = 1 - confidence_level
         # degrees of freedom: n - k (number of observations - number of coefficients)
         n_obs = getattr(self, "n_obs", None)
         if n_obs is None:
-            # Try to infer from model or data
+            # try to infer from model or data, default to 100 if not found
             try:
                 self.model_dict.get("k", [100])[0]
-                # n_obs = self.r_model.rx2("k")[
-                #     0
-                # ]  # metafor stores k as number of studies
             except Exception:
                 n_obs = X.shape[0]
         n_coefs = len(self.coefficients)
@@ -858,10 +798,10 @@ class MetaforModel:
         results["ci_lb"] = ci_lb.reshape(meshgrids[0].shape)
         results["ci_ub"] = ci_ub.reshape(meshgrids[0].shape)
 
-        # # Calculate prediction intervals (still using normal distribution for PI, unless t is desired)
+        # calculate prediction intervals (still using normal distribution for PI, unless t is desired)
         pi_se = self._calculate_prediction_interval_se(X)
         alpha = 1 - confidence_level
-        # For prediction intervals, also use t-distribution for consistency
+        # for prediction intervals, also use t-distribution for consistency
         pi_t_score = scipy_t.ppf(1 - alpha / 2, df)
 
         pi_lb = pred - pi_t_score * pi_se
@@ -869,27 +809,6 @@ class MetaforModel:
 
         results["pi_lb"] = pi_lb.reshape(meshgrids[0].shape)
         results["pi_ub"] = pi_ub.reshape(meshgrids[0].shape)
-
-        # # calculate confidence intervals
-        # alpha = 1 - confidence_level
-        # z_score = scipy_norm.ppf(1 - alpha / 2)  # two-tailed
-
-        # ci_lb = pred - z_score * se
-        # ci_ub = pred + z_score * se
-
-        # results["ci_lb"] = ci_lb.reshape(meshgrids[0].shape)
-        # results["ci_ub"] = ci_ub.reshape(meshgrids[0].shape)
-
-        # # # Calculate prediction intervals
-        # pi_se = self._calculate_prediction_interval_se(X)
-        # alpha = 1 - confidence_level
-        # z_score = scipy_norm.ppf(1 - alpha / 2)
-
-        # pi_lb = pred - z_score * pi_se
-        # pi_ub = pred + z_score * pi_se
-
-        # results["pi_lb"] = pi_lb.reshape(meshgrids[0].shape)
-        # results["pi_ub"] = pi_ub.reshape(meshgrids[0].shape)
 
         return results, meshgrids
 
@@ -901,11 +820,13 @@ class MetaforModel:
         where V is the variance-covariance matrix of coefficients.
         """
         try:
-            # Get variance-covariance matrix from the model
-            vb = np.array(self.r_model["vb"])  # metafor stores this as "vb"
+            # get variance-covariance matrix from the model
+            vb = np.array(
+                r_context_handler.index_named_list(self.r_model, "vb")
+            )  # metafor stores this as "vb" (variance-covariance matrix)
 
-            # Calculate standard errors: SE = sqrt(diag(X * V * X^T))
-            # For vectorized computation: se_i = sqrt(sum_jk(X_ij * V_jk * X_ik))
+            # calculate standard errors: SE = sqrt(diag(X * V * X^T))
+            # for vectorized computation: se_i = sqrt(sum_jk(X_ij * V_jk * X_ik))
             se_squared = np.sum(X * (X @ vb), axis=1)
             se = np.sqrt(se_squared)
 
@@ -913,9 +834,9 @@ class MetaforModel:
 
         except Exception as e:
             logger.warning(f"Could not calculate standard errors: {e}")
-            # Fallback: use coefficient standard errors as rough approximation
+            # fallback: use coefficient standard errors as rough approximation
             coef_se = np.array(self.model_dict.get("se", [0] * len(self.coefficients)))
-            # Simple approximation: SE ≈ sqrt(sum((X * coef_se)^2))
+            # simple approximation: SE ≈ sqrt(sum((X * coef_se)^2))
             se_approx = np.sqrt(np.sum((X * coef_se) ** 2, axis=1))
             return se_approx
 
@@ -926,28 +847,31 @@ class MetaforModel:
         Prediction intervals account for both coefficient uncertainty AND residual variance.
         PI_SE = sqrt(SE_pred^2 + sigma^2)
         """
-        # Get prediction standard error
+        # get prediction standard error
         pred_se = self._calculate_prediction_se(X)
 
         try:
-            # Get residual variance from the model
-            # In metafor, this might be stored as sigma2 or similar
-            if "sigma2" in self.r_model:
-                sigma2 = float(self.r_model["sigma2"][0])
+            # get residual variance from the model
+            if "sigma2" in self.r_model._NamedList__names:
+                sigma2 = float(
+                    r_context_handler.index_named_list(self.r_model, "sigma2")[0]
+                )
             else:
-                # Fallback: estimate from QE (residual heterogeneity)
+                # fallback: estimate from QE (residual heterogeneity)
                 QE = self.model_dict.get("QE", [1.0])[0]
                 df_resid = self.model_dict.get("k", [100])[0] - len(self.coefficients)
                 sigma2 = QE / max(df_resid, 1)
 
-            # Prediction interval SE includes both sources of uncertainty
+            # prediction interval SE includes both sources of uncertainty
             pi_se = np.sqrt(pred_se**2 + sigma2)
 
             return pi_se
 
         except Exception as e:
-            logger.warning(f"Could not calculate prediction interval SE: {e}")
-            # Fallback: inflate prediction SE by factor of 1.5
+            logger.warning(
+                f"Could not calculate prediction interval SE. Falling back to prediction SE * 1.5: {e}"
+            )
+            # fallback: inflate prediction SE by factor of 1.5
             return pred_se * 1.5
 
     def get_model_data_for_plotting(self, moderator_name: str) -> None:
@@ -1005,10 +929,9 @@ def generate_interactive_moderator_value(
 def extract_coefficient_names_from_model(model: ro.vectors.ListVector) -> list[str]:
     """Extract coefficient names from the model formula and structure."""
     try:
-        # Method 1: get from call attribute via context handler
         with r_context_handler.RContextManager() as r_ctx:
             ro = r_ctx["ro"]
-            ro.globalenv["cl"] = model["call"]
+            ro.globalenv["cl"] = r_context_handler.index_named_list(model, "call")
             labels = ro.r(
                 "local({"
                 "  t <- terms(cl$mods); "
@@ -1043,15 +966,15 @@ def predict_with_metafor(
 
         # Step 3: Rebuild model using default_converter (preserves ListVector)
         with lc(ro.default_converter):  # no pandas2ri here!
-            # Rebuild the R model from the stored call
+            # rebuild the R model from the stored call
             r_model_native = ro.r("local({ cl$data <- d; eval(cl) })")
 
-            # Build prediction matrix - FIXED: Handle multi-dimensional xs properly
+            # build prediction matrix - handle multi-dimensional xs properly
             if xs.ndim == 1:
-                # Single moderator - need to reshape to 2D
+                # single moderator - need to reshape to 2D
                 x_values_2d = xs.reshape(-1, 1)
             else:
-                # Multi-moderator case (e.g., polynomial: delta_t + I(delta_t^2))
+                # multi-moderator case (e.g., polynomial: delta_t + I(delta_t^2))
                 x_values_2d = xs
             # drop any columns of x_values_2d that are all zeros
             x_values_2d = x_values_2d[:, np.any(x_values_2d != 0, axis=0)]
@@ -1063,7 +986,7 @@ def predict_with_metafor(
                 byrow=True,
             )
 
-            # Use R predict function with native ListVector model
+            # use R predict function with native ListVector model
             pred_res = ro.r("predict")(
                 r_model_native, newmods=Xnew_r, level=(confidence_level / 100)
             )
@@ -1076,48 +999,3 @@ def predict_with_metafor(
                 "pred_lb": np.array(pred_res.rx2("pi.lb")),
                 "pred_ub": np.array(pred_res.rx2("pi.ub")),
             }
-
-
-# --- Deprecated functions ---
-
-
-# # Convenience functions for backwards compatibility
-# def create_metafor_model(
-#     df: pd.DataFrame, effect_type: str = "st_relative_calcification", **kwargs
-# ) -> MetaforModel:
-#     """Create and return a MetaforModel instance."""
-#     return MetaforModel(df=df, effect_type=effect_type, **kwargs)
-
-
-# def fit_metafor_model(
-#     df: pd.DataFrame, effect_type: str = "st_relative_calcification", **kwargs
-# ) -> MetaforModel:
-#     """Create, fit, and return a MetaforModel instance."""
-#     model = MetaforModel(df=df, effect_type=effect_type, **kwargs)
-#     return model.fit_model()
-
-# def get_prediction_range(
-#     self, moderator_name: str, extend_factor: float = 0.1, n_points: int = 100
-# ) -> np.ndarray:
-#     """
-#     Get a suitable range of x values for prediction plotting.
-
-#     Args:
-#         moderator_name: Name of the moderator variable
-#         extend_factor: Factor to extend range beyond data (0.1 = 10% extension)
-#         n_points: Number of prediction points
-
-#     Returns:
-#         Array of x values for prediction
-#     """
-#     if moderator_name not in self.data.columns:
-#         raise ValueError(f"Moderator '{moderator_name}' not found in data")
-
-#     values = self.data[moderator_name].dropna()
-#     x_min, x_max = values.min(), values.max()
-#     x_range = x_max - x_min
-
-#     extended_min = x_min - extend_factor * x_range
-#     extended_max = x_max + extend_factor * x_range
-
-#     return np.linspace(extended_min, extended_max, n_points)
