@@ -10,10 +10,6 @@ import pandas as pd
 import yaml
 from openpyxl import load_workbook
 
-# custom
-from calcification_meta_analysis.processing import carbonate_processing
-from calcification_meta_analysis.utils import config
-
 
 def _convert_numpy(obj) -> dict | list | np.ndarray | float | int | str:
     """Convert numpy types to native Python types for safe YAML serialization.
@@ -52,8 +48,7 @@ def read_yaml(yaml_fp) -> dict:
 
 
 def write_yaml(data: dict, fp="unnamed.yaml") -> None:
-    """Safe writing to yaml files"""
-    # convert numpy values to Python native types before serialization
+    """Safe writing to yaml files by converting numpy values to Python native types before serialization"""
     converted_data = _convert_numpy(data)
     with open(fp, "w") as file:
         yaml.dump(converted_data, file)
@@ -80,9 +75,6 @@ def extract_year_from_str(s) -> pd.Timestamp:
 
     Returns:
         pd.Timestamp: year extracted from string.
-
-    Raises:
-        ValueError: If multiple years are found in the string.
     """
     try:
         matches = re.findall(r"\d{4}", str(s))
@@ -114,9 +106,11 @@ def get_highlighted(
     mask = get_highlighted_mask(
         fp, sheet_name, rgb_color
     )  # generate mask of highlighted cells
-    return df.where(
-        mask.drop(0).reset_index(drop=True), np.nan
-    )  # remove first row of mask and reset index
+    aligned_mask = mask.drop(0).reset_index(
+        drop=True
+    )  # remove first row of mask and reset its index to align with df
+    df = df.where(aligned_mask, np.nan)
+    return df
 
 
 def get_highlighted_mask(
@@ -139,11 +133,9 @@ def get_highlighted_mask(
     df = pd.DataFrame([[cell.value for cell in row] for row in ws.iter_rows()])
     df = df.dropna(axis=1, how="all")  # remove any empty columns
     df.columns = df.iloc[0]  # set the first row as the column headers
-    # df = df.drop(0)  # remove the header row  # TODO: check this functionality
     mask = pd.DataFrame(
         False, index=df.index, columns=df.columns
     )  # mask with False by default, same shape as df
-    # mask.drop(0, inplace=True)  # drop the first row (header)
 
     # set highlighted cells to True, all else False
     for row_idx, row in enumerate(ws.iter_rows()):
@@ -152,38 +144,8 @@ def get_highlighted_mask(
                 mask.iat[row_idx, col_idx] = True
 
     # mark 'include' and 'n' columns as True for future processing
-    for col in ["Include", "n", "Species types", "Location"]:
+    for col in ["Include", "DOI", "n", "Species types", "Location"]:
         if col in mask.columns:
             mask[col] = True
 
     return mask
-
-
-def create_clean_data_sheet() -> None:
-    """Create the zotero-ready csv of clean data"""
-
-    df = carbonate_processing.populate_carbonate_chemistry(
-        config.data_dir / "Orlando_data.xlsx",
-        sheet_name="all_data",
-        selection_dict={"include": "yes"},
-    )
-
-    # cast year to int
-    df["year"] = df["year"].dt.year
-
-    # select relevant columns
-    save_cols = read_yaml(config.resources_dir / "mapping.yaml")[
-        "publication_data_columns"
-    ]
-    df = df[save_cols]
-
-    # rename column names using inverse of sheet_column_map
-    sheet_column_map = read_yaml(config.resources_dir / "mapping.yaml")[
-        "sheet_column_map"
-    ]
-    inverse_sheet_column_map = {v.lower(): k for k, v in sheet_column_map.items()}
-    df.rename(columns=inverse_sheet_column_map, inplace=True)
-
-    # save
-    df.to_csv(config.clean_data_dir / "data_cleaned.csv", index=False)
-    return df
