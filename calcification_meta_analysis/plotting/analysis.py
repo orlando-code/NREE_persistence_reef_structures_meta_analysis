@@ -25,9 +25,11 @@ from calcification_meta_analysis.analysis import (
     analysis,
     analysis_utils,
     meta_regression,
+    metafor,
 )
 from calcification_meta_analysis.plotting import plot_config, plot_utils
 from calcification_meta_analysis.processing import climatology as climatology_processing
+from calcification_meta_analysis.processing import processing
 from calcification_meta_analysis.utils import config, r_context_handler
 
 # R
@@ -610,10 +612,11 @@ class MetaRegressionResults:
 
 
 def plot_model_surface_2d(
-    model: meta_regression.MetaforModel,
+    model: metafor.MetaforModel,
     moderator_names: list[str],
     prediction_limits: dict[str, tuple[float, float]] = None,
     num_points: int = 100,
+    plot_variable: str = "pred",
 ):
     """Plot a surface of the model."""
     # check that len(moderator_names) == 2
@@ -626,21 +629,20 @@ def plot_model_surface_2d(
     xs, ys = np.meshgrid(xs, ys)
 
     # get prediction surface
-    pred_surface, meshgrids = meta_regression.predict_nd_surface_from_model(
-        model,
-        moderator_names,
-        [xs, ys],
+    pred_surface, meshgrids = model.predict_nd_surface_from_model(
+        moderator_names=moderator_names,
+        moderator_values=[xs, ys],
     )
 
     # get absolute max of pred_surface
-    abs_max = np.abs(pred_surface).max()
+    abs_max = np.abs(pred_surface[plot_variable]).max()
 
     # plot
     fig, ax = plt.subplots(figsize=(10, 8))
     contour_ax = ax.contourf(
         meshgrids[0],
         meshgrids[1],
-        pred_surface,
+        pred_surface[plot_variable],
         levels=50,
         cmap="coolwarm_r",
         vmin=-abs_max,
@@ -649,7 +651,12 @@ def plot_model_surface_2d(
     # format
     ax.set_xlabel(moderator_names[0])
     ax.set_ylabel(moderator_names[1])
-    cbar = plt.colorbar(contour_ax, orientation="horizontal", fraction=0.05, shrink=0.8)
+    cbar = plt.colorbar(
+        contour_ax,
+        orientation="horizontal",
+        fraction=0.05,
+        shrink=0.8,
+    )
     cbar.set_label(label="Relative calcification ($\\Delta$%)", size="large")
     return fig, ax
 
@@ -945,7 +952,10 @@ def plot_contour_gp(
 
 
 def plot_global_timeseries_grid(
-    groups: dict[str, pd.DataFrame], figsize=(12, 8), dpi=300, title_org: str = None
+    predicted_response_df: pd.DataFrame,
+    figsize=(12, 8),
+    dpi=300,
+    title_org: str = None,
 ):
     """
     Plot global timeseries in a grid layout with SSPs vertically and group types horizontally.
@@ -953,27 +963,27 @@ def plot_global_timeseries_grid(
     Parameters:
         groups: dict mapping group names (str) to DataFrames (pd.DataFrame)
     """
-    # Extract scenarios and group names
-    scenarios = next(iter(groups.values()))["scenario"].unique()
-    group_names = list(groups.keys())
-
+    scenarios = predicted_response_df["scenario"].unique()
+    group_names = predicted_response_df["core_grouping"].unique()
+    # sort names alphabetically with bioerosion to the end
+    group_names = np.sort(group_names)
+    if "Bioerosion" in group_names:
+        group_names = np.append(group_names[group_names != "Bioerosion"], "Bioerosion")
     # Define colors and formatting
     historic_colour, historic_alpha = "darkgrey", 0.5
     forecast_alpha, zero_effect_colour, zero_effect_alpha = 0.3, "black", 0.5
-    # group_colours = sns.color_palette("tab10", len(groups))  # Different color per group
-    # group_colour_dict = {group: group_colours[i] for i, group in enumerate(groups)}
     scenario_colours = sns.color_palette("Reds", len(scenarios))
     scenario_colour_dict = {
         scenario: scenario_colours[i] for i, scenario in enumerate(scenarios)
     }
 
-    x_points = next(iter(groups.values()))["time_frame"].unique()
+    x_points = predicted_response_df["time_frame"].unique()
     time_discontinuity = 2025  # present day
 
     # Create grid layout: rows are SSPs, columns are group types
     fig, axes = plt.subplots(
         len(scenarios),
-        len(groups),
+        len(group_names),
         figsize=figsize,
         sharex=False,
         sharey=False,
@@ -984,9 +994,10 @@ def plot_global_timeseries_grid(
     global_min_ylim, global_max_ylim = float("inf"), float("-inf")
 
     # First pass to calculate global y-limits
-    for group_name, df in groups.items():
+    for group_name in group_names:
+        cg_df = predicted_response_df[predicted_response_df.core_grouping == group_name]
         for scenario in scenarios:
-            scenario_df = df[df["scenario"] == scenario]
+            scenario_df = cg_df[cg_df["scenario"] == scenario]
             means_df = scenario_df[scenario_df["percentile"] == "mean"]
             min_val = min(
                 means_df["ci_lb"].min() if not means_df.empty else 0, 0
@@ -1006,6 +1017,9 @@ def plot_global_timeseries_grid(
     # Plot each cell in the grid
     for i, scenario in enumerate(scenarios):
         for j, group_name in enumerate(group_names):
+            cg_df = predicted_response_df[
+                predicted_response_df.core_grouping == group_name
+            ].copy()
             ax = (
                 axes[i, j]
                 if len(scenarios) > 1 and len(group_names) > 1
@@ -1016,8 +1030,7 @@ def plot_global_timeseries_grid(
                 else axes
             )
 
-            df = groups[group_name]
-            scenario_df = df[df["scenario"] == scenario]
+            scenario_df = cg_df[cg_df["scenario"] == scenario]
 
             if not scenario_df.empty:
                 means_df = scenario_df[scenario_df["percentile"] == "mean"].reset_index(
@@ -1639,10 +1652,16 @@ class BurningEmbersPlotter:
         ) = self._get_ordered_categories_with_positions()
 
         fig, ax = plt.subplots(figsize=self.config.figsize, dpi=self.config.dpi)
-        pred_lims = (None, None)
-        cg_preds, pred_lims = self._calculate_cg_prediction()
+        cg_preds, self.pred_lims = self._calculate_cg_prediction()
         cmap = self._get_cmap()
-        cnorm = self._get_cnorm(vmin=min(pred_lims), vmax=max(pred_lims))
+        cnorm = self._get_cnorm(
+            vmin=self.config.vmin
+            if self.config.vmin is not None
+            else min(self.pred_lims),
+            vmax=self.config.vmax
+            if self.config.vmax is not None
+            else max(self.pred_lims),
+        )
 
         # Draw separator line if bioerosion shift is enabled
         if self.config.shift_bioerosion and self.config.add_separator_line:
@@ -1822,25 +1841,8 @@ class BurningEmbersPlotter:
         category: str,
     ) -> None:
         """Draw dots to indicate the certainty of the prediction at each forcing level."""
-        # increase in increments of 0.5 for temperature, 0.1 for pH, otherwise 200 (CO2 concentration)
-        # step = (
-        #     0.5
-        #     if self.config.forcing_col == "anomaly_value_sst"
-        #     else 0.1
-        #     if self.config.forcing_col == "anomaly_value_ph"
-        #     else 200
-        # )
-        # set dot label for each SSP scenario (ax2 ticks)
-        dot_positions = ax.get_yticks()
+        dot_levels = ax.get_yticks()
 
-        # max_val = utils.round_down_to_nearest(self.forcing_vals.max(), step)
-        # min_val = utils.round_down_to_nearest(self.forcing_vals.min(), step)
-
-        # dot_levels = np.arange(min_val, max_val + step, step)
-        dot_levels = dot_positions
-        # thin down to integer spacing if forcing_col is SST
-        # if self.config.forcing_col == "anomaly_value_sst":
-        #     dot_levels = dot_levels[1::2]
         category_data = self.predictions_df[
             self.predictions_df["core_grouping"] == category
         ]
@@ -1942,7 +1944,7 @@ class BurningEmbersPlotter:
     def _format_rhs_axes(self, ax: plt.Axes, categories: list[str]) -> None:
         """Create a secondary y-axis showing SSP scenario values for 2100."""
         # Create twin axis on the right
-        ax2 = ax.twinx()
+        ax_rhs = ax.twinx()
 
         # Get unique scenarios from the predictions data and their 2100 values
         unique_scenarios = self.predictions_df["scenario"].unique()
@@ -2007,34 +2009,54 @@ class BurningEmbersPlotter:
 
                 ssp_labels.append(rf"$\bf{{{scenario_label}}}$" + f"\n{value_label}")
 
-        # Set the secondary axis to match the primary axis limits
-        ax2.set_ylim(ax.get_ylim())
+        # get the primary axis limits
+        primary_ylim = ax.get_ylim()
 
-        # Set ticks at the SSP values
-        ax2.set_yticks(ssp_values)
-        ax2.set_yticklabels(ssp_labels, fontsize=12)
+        # ensure y-limits include both primary axis range and SSP values (where dots will be plotted)
+        # Add padding to accommodate dots that might be slightly above/below the tick positions
+        if ssp_values:
+            min_ssp = min(ssp_values)
+            max_ssp = max(ssp_values)
+            # calculate padding as a small percentage of the SSP range, or fixed value if range is zero
+            ssp_range = max_ssp - min_ssp
+            padding = (
+                ssp_range * 0.02
+                if ssp_range > 0
+                else abs(max_ssp) * 0.02
+                if max_ssp != 0
+                else 0.1
+            )
 
-        # Format the secondary y-axis
-        ax2.tick_params(axis="y", labelsize=12, colors="black")
+            # expand limits to include SSP values with padding for dots
+            expanded_ymin = min(primary_ylim[0], min_ssp - padding)
+            expanded_ymax = max(primary_ylim[1], max_ssp + padding)
 
-        # Add ylabel for secondary axis
-        # forcing_label = (
-        #     "Projected SST anomaly (°C) in 2100, by SSP"
-        #     if "sst" in self.config.forcing_col
-        #     else "Projected pH anomaly in 2100, by SSP"
-        #     if "ph" in self.config.forcing_col
-        #     else "Projected CO₂ concentration (ppm) in 2100, by SSP"
-        # )
+            # only update left axis if expansion is needed (to avoid unnecessary changes)
+            if expanded_ymin < primary_ylim[0] or expanded_ymax > primary_ylim[1]:
+                ax.set_ylim(expanded_ymin, expanded_ymax)
+                # update primary_ylim for right axis
+                primary_ylim = (expanded_ymin, expanded_ymax)
+        else:
+            expanded_ymin, expanded_ymax = primary_ylim
+
+        # set right-hand axis to match (expanded) primary axis limits
+        ax_rhs.set_ylim(primary_ylim)
+
+        # set ticks at the SSP values
+        ax_rhs.set_yticks(ssp_values)
+        ax_rhs.set_yticklabels(ssp_labels, fontsize=12)
+
+        # format the secondary y-axis
+        ax_rhs.tick_params(axis="y", labelsize=12, colors="black")
+
         forcing_label = "Projected forcing in 2100, by SSP"
 
-        ax2.set_ylabel(forcing_label, fontsize=14, rotation=270, labelpad=40)
-        ax2.yaxis.grid(True, linestyle="--", alpha=0.7, zorder=-20)
-        # Remove spines from secondary axis (keep only right spine)
-        ax2.spines["top"].set_visible(False)
-        ax2.spines["bottom"].set_visible(False)
-        ax2.spines["left"].set_visible(False)
-        ax2.spines["right"].set_visible(False)
-        return ax2
+        ax_rhs.set_ylabel(forcing_label, fontsize=14, rotation=270, labelpad=40)
+        ax_rhs.yaxis.grid(True, linestyle="--", alpha=0.7, zorder=-20)
+        # remove spines from secondary axis
+        for spine in ["top", "bottom", "left", "right"]:
+            ax_rhs.spines[spine].set_visible(False)
+        return ax_rhs
 
     def _format_fig(self, fig, axes):
         """Format the figure: add title, adjust layout"""
@@ -2085,7 +2107,17 @@ class BurningEmbersPlotter:
             else fig.add_axes([0.45, 0.05, 0.5, 0.03])
             # else fig.add_axes([0.1, 0.05, 0.5, 0.03])
         )
-        cb = ColorbarBase(cax, cmap=cmap, norm=cnorm, orientation="horizontal")
+        cb = ColorbarBase(
+            cax,
+            cmap=cmap,
+            norm=cnorm,
+            orientation="horizontal",
+            extend="min"
+            if min(self.pred_lims) < cnorm.vmin
+            else "max"
+            if max(self.pred_lims) > cnorm.vmax
+            else None,
+        )
         # show tick parameters every 25%
         cb.set_ticks(np.arange(cnorm.vmax, cnorm.vmin - 1e-6, -25))
         cax.tick_params(labelsize=12)
@@ -2098,8 +2130,7 @@ class BurningEmbersPlotter:
         if self.config.pi_exceedance:
             # Create an invisible axis for the legend, placed alongside the colorbar
             lax = fig.add_axes([0.0, 0.05, 0.4, 0.03])
-            # lax = fig.add_axes([0.6, 0.05, 0.4, 0.03])
-            lax.axis("off")  # Hide the axis completely
+            lax.axis("off")  # hide the axis completely
             # Plot a dummy handle for the legend
             handle = lax.plot(
                 [],
@@ -2278,18 +2309,277 @@ class BurningEmbersPlotter:
         predictions_grid_df = self.predictions_df
         # sort by core_grouping and scenario to be ready for plotting
         predictions_grid_df.sort_values(by=["core_grouping", "scenario"], inplace=True)
-        # calculate p-scores for each prediction
-        predictions_grid_df.loc[:, "p_score"] = predictions_grid_df.apply(
-            lambda row: analysis_utils.p_score(row["pred"], row["se"], null_value=0),
-            axis=1,
-        )
-        # assign certainty to each prediction
-        predictions_grid_df.loc[:, "certainty"] = (
-            predictions_grid_df["p_score"].apply(analysis_utils.assign_certainty)
-            if "certainty" not in predictions_grid_df.columns
-            else predictions_grid_df["certainty"]
-        )
         # add emissions to the predictions
         predictions_grid_df = self._merge_with_emissions_data(predictions_grid_df)
         # Keep sorted by core_grouping and scenario for consistent plotting
         return predictions_grid_df.sort_values(by=["core_grouping", "scenario"])
+
+
+def plot_projected_rates_barplot(
+    response_df,
+    years_of_interest=(2050, 2100),
+    exclude_groups=("Foraminifera",),
+    ylim_min=-200,
+    group_order_special_last="Bioerosion",
+):
+    """
+    Plots a grouped barplot for projected calcification and bioerosion rates
+    in specified years and scenarios, with CIs and prediction intervals.
+
+    Args:
+        response_df (pd.DataFrame): DataFrame with predictions.
+        years_of_interest (tuple): Years to include.
+        exclude_groups (tuple): core_grouping values to exclude.
+        group_order_special_last (str): Group to move to last position.
+    """
+    # --- Filter and summarize data ---
+    be_df_filtered = response_df[response_df["time_frame"].isin(years_of_interest)]
+    for exclude in exclude_groups:
+        be_df_filtered = be_df_filtered[be_df_filtered["core_grouping"] != exclude]
+
+    summary = (
+        be_df_filtered.groupby(["scenario", "core_grouping", "time_frame"])
+        .agg(
+            mean_pred=("pred", "mean"),
+            ci_lb=("ci_lb", "mean"),
+            ci_ub=("ci_ub", "mean"),
+            pi_lb=("pi_lb", "mean"),
+            pi_ub=("pi_ub", "mean"),
+        )
+        .reset_index()
+    )
+
+    scenarios = summary["scenario"].unique()
+    core_groupings = summary["core_grouping"].unique()
+    years = list(years_of_interest)
+
+    # Order core_groupings alphabetically, but with group_order_special_last last
+    ordered_core_groupings = sorted(
+        [cg for cg in core_groupings if cg != group_order_special_last]
+    )
+    if group_order_special_last in core_groupings:
+        ordered_core_groupings.append(group_order_special_last)
+
+    # Add whitespace gap before special last group
+    gap = 1.2  # controls width of the whitespace; >1 for visible gap
+    x_positions = []
+    for idx, cg in enumerate(ordered_core_groupings):
+        if idx == 0:
+            x_positions.append(0)
+        elif cg == group_order_special_last:
+            x_positions.append(x_positions[-1] + gap)
+        else:
+            x_positions.append(x_positions[-1] + 1)
+    x_positions = np.array(x_positions)
+
+    fig, axes = plt.subplots(
+        1, len(scenarios), figsize=(3 * len(scenarios), 5), sharey=True, dpi=300
+    )
+
+    scenario_colours = sns.color_palette("Reds", len(scenarios))
+    colours = scenario_colours[1], scenario_colours[-1]
+
+    if len(scenarios) == 1:
+        axes = [axes]
+
+    for ax, scenario in zip(axes, scenarios):
+        data = summary[summary["scenario"] == scenario]
+        bar_width = 0.2
+        for i, year in enumerate(years):
+            year_data = data[data["time_frame"] == year]
+            means = [
+                year_data[year_data["core_grouping"] == cg]["mean_pred"].values[0]
+                if not year_data[year_data["core_grouping"] == cg].empty
+                else np.nan
+                for cg in ordered_core_groupings
+            ]
+            ci = [
+                (
+                    year_data[year_data["core_grouping"] == cg]["ci_ub"].values[0]
+                    - year_data[year_data["core_grouping"] == cg]["ci_lb"].values[0]
+                )
+                / 2
+                if not year_data[year_data["core_grouping"] == cg].empty
+                else np.nan
+                for cg in ordered_core_groupings
+            ]
+            pi = [
+                (
+                    year_data[year_data["core_grouping"] == cg]["pi_ub"].values[0]
+                    - year_data[year_data["core_grouping"] == cg]["pi_lb"].values[0]
+                )
+                / 2
+                if not year_data[year_data["core_grouping"] == cg].empty
+                else np.nan
+                for cg in ordered_core_groupings
+            ]
+
+            # Plot only the upper error bars (extending into the bars)
+            ax.errorbar(
+                x_positions + i * bar_width - bar_width / 4.5,
+                [m + 10 for m in means],
+                yerr=[[c + 10 for c in ci], np.zeros_like(ci)],
+                fmt="none",
+                capsize=2,
+                barsabove=False,
+                color="black",
+            )
+            ax.errorbar(
+                x_positions + i * bar_width + bar_width / 4.5,
+                [m + 10 for m in means],
+                yerr=[[p + 10 for p in pi], np.zeros_like(pi)],
+                fmt="none",
+                capsize=2,
+                barsabove=True,
+                color="lightgrey",
+            )
+            ax.bar(
+                x_positions + i * bar_width,
+                means,
+                width=bar_width,
+                label=str(year),
+                align="center",
+                color=colours[i],
+                zorder=10,
+            )
+
+        # # Y limits based on 2100, mean row, pi_lb
+        if not ylim_min:
+            ylim_min = (
+                be_df_filtered[
+                    (be_df_filtered["time_frame"] == 2100)
+                    & (be_df_filtered["percentile"] == "mean")
+                ]["pi_lb"].min()
+                * 1.1
+                if "percentile" in be_df_filtered.columns
+                else be_df_filtered[be_df_filtered["time_frame"] == 2100]["pi_lb"].min()
+                * 1.1
+            )
+        ax.set_ylim(ylim_min, 0)
+
+        # Set xticks and labels
+        ax.set_xticks(x_positions + bar_width / 2)
+        xtick_labels = [cg.replace(" ", "\n") for cg in ordered_core_groupings]
+        ax.set_xticklabels(xtick_labels, rotation=45, fontsize=10)
+
+        # Draw a dotted vertical line before special last group
+        if group_order_special_last in ordered_core_groupings:
+            bio_idx = ordered_core_groupings.index(group_order_special_last)
+            if bio_idx > 0:
+                x_line = (x_positions[bio_idx - 1] + x_positions[bio_idx]) / 1.95
+                ax.axvline(x_line, color="k", linestyle=":", linewidth=1)
+
+        ax.set_title(f"{plot_config.SCENARIO_MAP.get(scenario, str(scenario))}")
+        ax.grid(axis="y", linestyle="--", alpha=0.5)
+
+    axes[0].errorbar(
+        [],
+        [],
+        yerr=[],
+        fmt="none",
+        capsize=2,
+        barsabove=True,
+        color="darkgrey",
+        label="95% confidence interval",
+    )
+    axes[0].errorbar(
+        [],
+        [],
+        yerr=[],
+        fmt="none",
+        capsize=2,
+        color="lightgrey",
+        barsabove=True,
+        label="95% prediction interval",
+    )
+    axes[0].legend(title="Year")
+    axes[0].set_ylabel("Percentage change in calcification rate", fontsize=10)
+    plt.tight_layout()
+    return fig, axes
+
+
+def plot_exponential_cover(
+    df: pd.DataFrame, x_col: str, y_col: str, label_color: str = "#812066"
+) -> tuple[plt.Figure, plt.Axes]:
+    """Fit and plot exponential cover vs climate anomaly with error shading.
+
+    Args:
+        df (pd.DataFrame): The dataframe containing the data.
+        x_col (str): The x-axis variable.
+        y_col (str): The y-axis variable.
+        label_color (str): The color of the line.
+
+    Returns:
+        fig, ax: The figure and axis of the plot.
+
+    Notes:
+        An exponential curve is fitted to very messy data. The error shading attempts to encapsulate this uncertainty. However, the core message is that above around 1.5°C, coral cover is predicted to be close to zero.
+    """
+    from scipy.optimize import curve_fit
+
+    def exponential_func(x, a, b, c):
+        return a * np.exp(b * x) + c
+
+    x_data = df[x_col]
+    y_data = df[y_col]
+    params, covariance = curve_fit(exponential_func, x_data, y_data, p0=(1, -1, 1))
+    x_values = np.linspace(x_data.min(), x_data.max(), 500)
+    y_values = exponential_func(x_values, *params)
+    param_std = np.sqrt(np.diag(covariance))
+    y_upper = exponential_func(x_values, *(params + param_std))
+    y_lower = exponential_func(x_values, *(params - param_std))
+
+    fig, ax = plt.subplots(figsize=(24, 2), dpi=300)
+    ax.plot(x_values, y_values * 100, color=label_color, label="Exponential Fit")
+    ax.fill_between(
+        x_values,
+        y_lower * 100,
+        y_upper * 100,
+        color=label_color,
+        alpha=0.2,
+        label="Uncertainty",
+    )
+
+    ax.set_yticks([0, 10, 20])
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=270, fontsize=28)
+    ax.tick_params(axis="y", pad=-50)
+    ax.grid(False)
+    for spine in ["top", "right", "left", "bottom"]:
+        ax.spines[spine].set_visible(False)
+    ax.hlines(0, xmin=x_data.min(), xmax=x_data.max(), color="black", lw=1)
+    ax.set_xticks([])
+    ax.set_ylabel(
+        "Percentage\ncover", rotation=270, labelpad=100, fontsize=42, style="italic"
+    )
+    # Arrow to zero line
+    idx_zero = np.where(y_values < 0.003)[0][0]
+    ax.annotate(
+        "Zero\ncover",
+        xy=(x_values[idx_zero], 0.5),
+        xytext=(x_values[idx_zero], x_data.max() + 12),
+        arrowprops=dict(arrowstyle="->", lw=1, color="black"),
+        fontsize=42,
+        ha="center",
+        va="center",
+        rotation=270,
+        style="italic",
+    )
+    fig.patch.set_alpha(0)
+    ax.patch.set_alpha(0)
+    plt.gcf().subplots_adjust(bottom=-1)
+    return fig, ax
+
+
+def calculate_and_plot_coral_cover_exponential():
+    """Calculate and plot the exponential cover vs climate anomaly."""
+    wide_df = processing.load_and_format_coral_cover(
+        config.data_dir / "coral_cover_locs.xlsx"
+    )
+    df_diff = processing.compute_cover_difference(wide_df)
+    merged_clim_df = climatology_processing.load_and_merge_coral_cover_climatology()
+    clim_cover = pd.merge(
+        df_diff, merged_clim_df, on=["reef_id", "scenario"], how="left"
+    )
+    clim_cover = clim_cover.sort_values(by="mean_sst_20y_anomaly_ensemble")
+    fig, ax = plot_exponential_cover(clim_cover, "mean_sst_20y_anomaly_ensemble", 2100)
+    return fig, ax
