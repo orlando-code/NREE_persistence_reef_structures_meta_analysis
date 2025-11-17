@@ -1,8 +1,10 @@
-### define and assign experimental treatment groups
+import logging
 
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
+
+logger = logging.getLogger(__name__)
 
 
 def cluster_array_values_within_tolerance(array_like: list, tolerance: float) -> list:
@@ -58,8 +60,14 @@ def aggregate_treatments_rows_with_individual_samples(df: pd.DataFrame) -> pd.Da
         "calcification_unit",
         "irr_group",
     ]
+    # filter group_cols to only include columns that exist in the dataframe
+    group_cols_present = [col for col in group_cols if col in df.columns]
+    logger.info(
+        f"Missing group columns: {set(group_cols) - set(group_cols_present)}"
+    ) if set(group_cols) - set(group_cols_present) else None
+
     # select only groups where all n==1 (i.e. only single-sample treatments)
-    mask = df.groupby(group_cols)["n"].transform(lambda x: (x == 1).all())
+    mask = df.groupby(group_cols_present)["n"].transform(lambda x: (x == 1).all())
     # drop rows containing
     to_agg = df[mask]
     not_agg = df[~mask]
@@ -102,11 +110,8 @@ def aggregate_treatments_rows_with_individual_samples(df: pd.DataFrame) -> pd.Da
         }
         # Only include columns that are present in the dataframe
         agg_dict_present = {k: v for k, v in agg_dict.items() if v[0] in to_agg.columns}
-
         aggregated = (
-            to_agg.groupby([col for col in group_cols if col in to_agg.columns])
-            .agg(**agg_dict_present)
-            .reset_index()
+            to_agg.groupby(group_cols_present).agg(**agg_dict_present).reset_index()
         )
         result = pd.concat([not_agg, aggregated], ignore_index=True)
     else:
@@ -304,8 +309,6 @@ def assign_treatment_groups_multilevel(
             )
             continue
 
-        if study_doi == "10.1016/j.jembe.2010.11.009":
-            print("here")
         # if manual (any rows in control column have a value)
         if not group_df["control"].isna().all():  # manual group assignment
             processed_dfs.extend(manual_group_assignment(group_df, t_atol, pH_atol))
@@ -313,29 +316,6 @@ def assign_treatment_groups_multilevel(
             processed_dfs.append(
                 automatic_group_assignment(group_df, irr_group, t_atol, pH_atol)
             )
-
-    #     # if any rows in control column have a value, treat separately
-
-    #     # if rows not marked as control ('y' in control column)...
-    #     if not group_df["control"].isna().all():
-    #         control_T, control_pH = manual_group_assignment(group_df)
-    #     else:  # assume control is min temp, max pH
-    #         control_T = (
-    #             group_df["temp"].min() if not group_df["temp"].isna().all() else None
-    #         )
-    #         control_pH = (
-    #             group_df["phtot"].max() if not group_df["phtot"].isna().all() else None
-    #         )
-
-    #     # map each value to its cluster index
-    #     t_mapping = _make_cluster_mapping(group_df["temp"].dropna().unique(), t_atol)
-    #     ph_mapping = _make_cluster_mapping(group_df["phtot"].dropna().unique(), pH_atol)
-
-    #     # process group
-    #     treatments_df = assign_treatment_groups(
-    #         group_df, control_T, control_pH, t_mapping, ph_mapping, irr_group
-    #     )
-    #     processed_dfs.append(treatments_df)
 
     if processed_dfs:
         combined_df = pd.concat(processed_dfs)  # concatenating on index
@@ -358,7 +338,7 @@ def assign_treatment_groups_multilevel(
     ]
     choices = ["control", "temp_phtot", "temp", "phtot"]
     result_df["treatment"] = np.select(conditions, choices, default="unknown")
-    # Replace 'unknown' with np.nan after the select operation
+    # replace 'unknown' treatments with NaN after the select operation
     result_df.loc[result_df["treatment"] == "unknown", "treatment"] = np.nan
     # drop any rows with nans in treatment_group columns (single-treatment studies)
     result_df = result_df.dropna(subset=treatment_group_cols)
