@@ -14,5 +14,6 @@ api_keys.yaml
 
 # ignoring resources dir for now
 resources/
+figures/
 .png
 *.jpg
