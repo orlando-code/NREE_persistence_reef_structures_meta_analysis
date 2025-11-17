@@ -7,7 +7,7 @@ import pandas as pd
 from scipy import interpolate
 from tqdm.auto import tqdm
 
-from calcification_meta_analysis.utils import file_ops
+from calcification_meta_analysis.utils import config, file_ops
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def convert_climatology_csv_to_multiindex(
         how="left",
         suffixes=("", "_right"),
     )
-    # Remove any columns ending with '_right' or the 'index_right' column specifically
+    # remove any columns ending with '_right' or the 'index_right' column specifically
     columns_to_drop = [
         col for col in df.columns if col.endswith("_right") or col == "index_right"
     ]
@@ -181,7 +181,7 @@ def interpolate_and_extrapolate_predictions(
         pd.DataFrame({"time_frame": all_years}), how="cross"
     )
 
-    # Merge full grid with existing predictions
+    # merge full climatology grid with existing predictions
     df_full = pd.merge(
         full_grid,
         df,
@@ -189,7 +189,7 @@ def interpolate_and_extrapolate_predictions(
         how="left",
     )
 
-    # Now interpolate/extrapolate for each group
+    # interpolate/extrapolate for each group
     for (core_grouping, scenario, percentile), group_df in df_full.groupby(
         ["core_grouping", "scenario", "percentile"], observed=False
     ):
@@ -202,20 +202,18 @@ def interpolate_and_extrapolate_predictions(
         available_years = group_df.dropna(subset=value_cols)["time_frame"].values
 
         if len(available_years) < 2:
-            continue  # Not enough points to interpolate
+            continue  # not enough points to interpolate
 
         for value_col in value_cols:
             available_vals = group_df.dropna(subset=[value_col])[value_col].values
 
             if len(available_vals) < 2:
-                continue  # Not enough data
+                continue  # not enough points to interpolate
 
-            # Fit spline
+            # fit spline and predict for all years
             spline = interpolate.make_interp_spline(
                 available_years, available_vals, k=min(2, len(available_vals) - 1)
             )
-
-            # Predict for all years
             df_full.loc[mask, value_col] = spline(all_years)
 
     return df_full
@@ -362,10 +360,10 @@ def extrapolate_df(
         if len(historic_years) < 2:
             return None
 
-        # Remove duplicates in historic_years by averaging values for each year
+        # remove duplicates in historic_years by averaging values for each year
         years = np.array(historic_years)
         vals = np.array(historic_vals)
-        # Use pandas groupby to average values for duplicate years
+        # use pandas groupby to average values for duplicate years
         df_tmp = pd.DataFrame({"year": years, "val": vals})
         df_unique = df_tmp.groupby("year", as_index=False).mean()
         unique_years = df_unique["year"].values
@@ -380,7 +378,7 @@ def extrapolate_df(
             )
             return spline(target_years)
         except ValueError as e:
-            # If still fails, fallback to linear interpolation with extrapolation
+            # if still fails, fallback to linear interpolation with extrapolation
             if "Expect x to not have duplicates" in str(
                 e
             ) or "Expect x to be strictly increasing" in str(e):
@@ -412,7 +410,7 @@ def extrapolate_df(
                 extrapolated_data[col] = extrap
             else:
                 extrapolated_data[col] = np.full(len(target_years), np.nan)
-        # Build one row per year, with all columns populated
+        # build one row per year, with all columns populated
         for i, year in enumerate(target_years):
             row = dict(zip(groupby_cols, group_keys))
             row[time_col] = year
@@ -421,7 +419,7 @@ def extrapolate_df(
             extrapolated_rows.append(row)
 
     extrapolated_df = pd.DataFrame(extrapolated_rows)
-    # Combine and sort/deduplicate
+    # combine and sort/deduplicate
     combined_df = (
         pd.concat([df, extrapolated_df], ignore_index=True)
         .sort_values(list(groupby_cols) + [time_col])
@@ -457,7 +455,33 @@ def filter_df_by_extreme_climatologies(
     min_t_val, max_t_val, min_ph_val, max_ph_val = calculate_extreme_climatology_values(
         climatology_df
     )
-    # filter by extreme climatologies
+    # filter by extreme climatology values
     df = df[(df.delta_t > min_t_val) & (df.delta_t < max_t_val)]
     df = df[(df.delta_ph > min_ph_val) & (df.delta_ph < max_ph_val)]
     return df
+
+
+def load_and_merge_coral_cover_climatology() -> pd.DataFrame:
+    """Load ph/sst climatology for coral cover locations and merge with coral cover data."""
+    # load climatology, and index with reef_id, scenario, time_frame
+    ph_clim = process_climatology_csv(
+        config.climatology_data_dir
+        / "coral_cover_ph_scenarios_output_table_site_locations.csv",
+        index_col=["reefid", "scenario", "time_frame"],
+    )
+    sst_clim = process_climatology_csv(
+        config.climatology_data_dir
+        / "coral_cover_sst_scenarios_output_table_site_locations.csv",
+        index_col=["reefid", "scenario", "time_frame"],
+    )
+    merged = (
+        pd.merge(
+            ph_clim,
+            sst_clim,
+            on=["reefid", "scenario", "time_frame"],
+            suffixes=("_ph", "_sst"),
+        )
+        .reset_index(inplace=False)
+        .rename(columns={"reefid": "reef_id"}, inplace=False)
+    )
+    return merged
