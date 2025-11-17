@@ -1,4 +1,5 @@
 # general
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -8,11 +9,9 @@ from matplotlib.legend_handler import HandlerBase
 from scipy.stats import norm
 from tqdm.auto import tqdm
 
+from calcification_meta_analysis.analysis import analysis_utils, metafor
 from calcification_meta_analysis.plotting import plot_config
-from calcification_meta_analysis.utils import r_context_handler
-
-metafor = r_context_handler.safe_import_r_package("metafor")
-base = r_context_handler.safe_import_r_package("base")
+from calcification_meta_analysis.processing import climatology as climatology_processing
 
 
 # --- core analysis calculations ---
@@ -49,8 +48,8 @@ def calc_relative_rate(
         if (
             se1 is not None and se2 is not None
         ):  # if SEs are provided, calculate uncertainty
-            # When both means are zero, consider the ratio of SEs to estimate uncertainty
-            # This represents how much percentage change we would expect if the values
+            # when both means are zero, consider the ratio of SEs to estimate uncertainty
+            # this represents how much percentage change we would expect if the values
             # fluctuated by ±1 SE from zero
             if (
                 se1 > 0
@@ -63,21 +62,6 @@ def calc_relative_rate(
 
     if mu1 == 0:  # special case: baseline is zero
         raise ValueError("Baseline is zero")
-        pc = np.sign(mu2) * 100  # signed 100% change
-
-        if (
-            se1 is not None and se2 is not None
-        ):  # if SE provided, calculate the uncertainty
-            if (
-                abs(mu2) > epsilon
-            ):  # use the ratio of SEs to treatment for zero treatment
-                # N.B. error in baseline causes very large fluctuations in percent change
-                se_pc = 100 * se1 / abs(mu2)
-                se_pc = np.sqrt(se_pc**2 + (100 * se2 / abs(mu2)) ** 2)
-            else:  # if both are essentially zero, high uncertainty
-                se_pc = float("inf") if (se1 > 0 or se2 > 0) else 0
-            return pc, se_pc
-        return pc
 
     # standard percent change calculation
     pc = ((mu2 - mu1) / abs(mu1)) * 100
@@ -119,11 +103,11 @@ def calc_absolute_rate(
         se1 = sd1 / np.sqrt(n1)
         se2 = sd2 / np.sqrt(n2)
 
-        # Error propagation - calculate partial derivatives
+        # error propagation - calculate partial derivatives
         d_abs_diff_dmu1 = -1
         d_abs_diff_dmu2 = 1
 
-        # Calculate standard error using error propagation
+        # calculate standard error using error propagation
         var_abs_diff = (d_abs_diff_dmu1**2 * se1**2) + (d_abs_diff_dmu2**2 * se2**2)
 
         return abs_diff, var_abs_diff
@@ -221,12 +205,28 @@ def calc_cooks_distance(data: pd.Series) -> pd.Series:
     return cooks_d
 
 
-def calc_cooks_threshold(data: pd.Series, nparams: int) -> float:
+def calc_cooks_threshold(
+    data: pd.Series, nparams: int, threshold_type: str = "liberal"
+) -> float:
     """
-    Calculate the Cook's distance threshold for outlier detection via 2√((k+1)/(n - k - 1)): a reproducible numerical replacement of eyeballing for outliers in the distance-study graph.
+    Calculate the Cook's distance threshold for outlier detection via a reproducible numerical replacement of eyeballing for outliers in the distance-study graph.
+
+    Args:
+        data (pd.Series): The data to calculate the threshold for.
+        nparams (int): The number of parameters in the model.
+        threshold_type (str): The type of threshold to calculate.
+
+    Returns:
+        float: The Cook's distance threshold.
     """
     n = len(data)
-    threshold = 2 * np.sqrt((nparams + 1) / (n - nparams - 1))
+    print(n, nparams)
+    if threshold_type == "conservative":
+        threshold = 4 / (n - nparams)
+    elif threshold_type == "liberal":
+        threshold = 2 * np.sqrt(nparams / (n - nparams - 1))
+    else:
+        raise ValueError(f"Invalid threshold type: {threshold_type}")
     return threshold
 
 
@@ -287,32 +287,24 @@ def calculate_effect_for_df(df: pd.DataFrame) -> pd.DataFrame:
     for col in effect_cols:
         result_df[col] = np.nan
 
+    # remove any rows with n=1 (since will have no error)
+    n_1_rows = result_df[result_df["n"] == 1].shape[0]
+    print(f"Removing {n_1_rows} {'row' if n_1_rows == 1 else 'rows'} with n=1")
+    result_df = result_df[result_df["n"] != 1]  # this shortens the df by 1
+
     # group by relevant factors and apply processing
     grouped_data = []
-
-    # remove any rows with n=1
-    n_1_rows = result_df[result_df["n"] == 1].shape[0]
-    row_str = "row" if n_1_rows == 1 else "rows"
-    print(f"Removing {n_1_rows} {row_str} with n=1")
-    result_df = result_df[result_df["n"] != 1]
-
     doi_bar = tqdm(result_df.doi.unique())
     for doi in doi_bar:
         doi_bar.set_description(f"Calculating effect sizes for {doi}")
         study_df = result_df[result_df["doi"] == doi]
-        # if doi == "10.1073/pnas.0804478105":
-        #     print(study_df)
         for _, irr_df in study_df.groupby("irr_group"):
             for _, species_df in irr_df.groupby("species_types"):
-                # df = process_group_multivar(
-                #     species_df
-                # )  # TODO: replace this with a simple per-row calculation
                 df = calculate_row_effect(species_df)
                 if isinstance(df, pd.Series):
                     df = pd.DataFrame([df].T)
                 if df is not None:
                     grouped_data.append(df)
-
     if isinstance(grouped_data, list):
         valid_dfs = [
             df
@@ -324,7 +316,7 @@ def calculate_effect_for_df(df: pd.DataFrame) -> pd.DataFrame:
                 pd.concat(valid_dfs).sort_index().copy()
             )  # sort index to avoid lexsort depth warning and create a copy to avoid fragmentation
         else:
-            # Return empty DataFrame with same columns and dtypes as expected output
+            # return empty DataFrame with same columns and dtypes as expected output
             df = pd.DataFrame(
                 columns=df.columns
                 if len(grouped_data) > 0 and grouped_data[0] is not None
@@ -475,13 +467,6 @@ def calc_treatment_effect_for_row(
     d_effect, d_var = calc_cohens_d(mu_c, mu_t, sd_c, sd_t, n_c, n_t)  # Cohen's d
     hg_effect, hg_var = calc_hedges_g(mu_c, mu_t, sd_c, sd_t, n_c, n_t)  # Hedges' g
 
-    # handle relative calcification (use raw value if already stated relative to baseline)
-    # rc_effect, rc_var = (
-    #     (mu_t, sd_t)
-    #     if isinstance(treatment_row["calcification_unit"], str)
-    #     and "delta" in treatment_row["calcification_unit"]
-    #     else calc_relative_rate(mu_c, mu_t, sd_c, sd_t, n_c, n_t)
-    # )
     rc_effect, rc_var = calc_relative_rate(mu_c, mu_t, sd_c, sd_t, n_c, n_t)
 
     abs_effect, abs_var = calc_absolute_rate(
@@ -499,12 +484,6 @@ def calc_treatment_effect_for_row(
     st_rc_effect, st_rc_var = calc_relative_rate(
         s_mu_c, s_mu_t, s_sd_c, s_sd_t, n_c, n_t
     )
-    # st_rc_effect, st_rc_var = (
-    #     (s_mu_t, s_sd_t)
-    #     if isinstance(treatment_row["st_calcification_unit"], str)
-    #     and "delta" in treatment_row["st_calcification_unit"]
-    #     else calc_relative_rate(s_mu_c, s_mu_t, s_sd_c, s_sd_t, n_c, n_t)
-    # )
     # absolute differences between standardised calcification rates
     st_abs_effect, st_abs_var = calc_absolute_rate(
         s_mu_c, s_mu_t, s_sd_c, s_sd_t, n_c, n_t
@@ -556,7 +535,9 @@ def calc_treatment_effect_for_row(
     return row_copy
 
 
-def weighted_mean_ci(x, meas_se, mu0=0.0, alpha=0.05):
+def weighted_mean_ci(
+    x: np.ndarray, meas_se: np.ndarray, mu0: float = 0.0, alpha: float = 0.05
+) -> tuple[float, float, float, float]:
     """Calculate the weighted mean, confidence interval, and significance level from data using inverse of variance as weights.
 
     Args:
@@ -584,11 +565,6 @@ def weighted_mean_ci(x, meas_se, mu0=0.0, alpha=0.05):
     return mu_hat, mu_hat - z_crit * se_mu, mu_hat + z_crit * se_mu, p
 
 
-# ----------------------
-# aggregate function with annotation and significance
-# ----------------------
-
-
 def summarise_group(
     df, group_col, n_col="n", doi_col="doi", effect_type="st_relative_calcification"
 ):
@@ -598,9 +574,6 @@ def summarise_group(
         data = subset[effect_type].values.astype(float)
         meas_se = subset[effect_type + "_var"].values.astype(float)
         mean, low, high, p = weighted_mean_ci(data, meas_se)
-
-        # t-test against null hypothesis of 0
-        # _, p_val = ttest_1samp(data, popmean=0)
 
         n_trials = subset[n_col].sum() if n_col in subset.columns else len(subset)
         n_studies = (
@@ -626,18 +599,14 @@ def summarise_group(
     return pd.DataFrame(rows)
 
 
-def assign_significance(row):
-    if row["p_val"] < 0.001:
-        return "***"
-    elif row["p_val"] < 0.01:
-        return "**"
-    elif row["p_val"] < 0.05:
-        return "*"
-    else:
-        return "ns"
+def label_study_data(axis: plt.axis, row: pd.Series, x_value: float = -200) -> None:
+    """Label the study data on the axis.
 
-
-def label_study_data(axis, row, x_value=-200) -> None:
+    Args:
+        axis: The axis to label the study data on.
+        row: The row of the dataframe containing the study data.
+        x_value: The x-value to label the study data on.
+    """
     axis.text(
         x_value,
         row["group"],
@@ -676,170 +645,81 @@ class HandlerStars(HandlerBase):
         return [t]
 
 
-# def calculate_effect_sizes_end_to_end(
-#     raw_data_fp: str,
-#     data_sheet_name: str,
-#     climatology_data_fp: str = None,
-#     selection_dict: dict = {"include": "yes"},
-# ) -> pd.DataFrame:
-#     """
-#     Calculate effect sizes from raw data and align with climatology data.
+def construct_predicted_response_surfaces(
+    df: pd.DataFrame,
+    global_anomaly_df: pd.DataFrame,
+    effect_type: str,
+    model_formula: str = "delta_t + delta_ph - 1",
+    surface_resolution: int = 1000,
+    cooks_distance_type: bool = None,
+):
+    """
+    For each core_grouping in the data, fit model and generate predicted response surfaces sampled over observed/future climatologies (global_anomaly_df).
 
-#     Args:
-#         raw_data_fp (str or Path): Path to raw data file
-#         data_sheet_name (str): Name of the sheet containing data
-#         climatology_data_fp (str or Path): Path to climatology data file
-#         selection_dict (dict): Dictionary of selection criteria
+    Args:
+        df (pd.DataFrame): DataFrame of data to fit models and generate response surfaces
+        global_anomaly_df (pd.DataFrame): DataFrame of global climatology anomalies
+        effect_type (str): Effect type to fit models with
+        surface_resolution (int): Resolution of the response surface
 
-#     Returns:
-#         pd.DataFrame: DataFrame with calculated effect sizes
-#     """
-#     # load and process carbonate chemistry data
-#     carbonate_df = carbonate_processing.populate_carbonate_chemistry(
-#         raw_data_fp, data_sheet_name, selection_dict=selection_dict
-#     )
+    Returns:
+        response_df: DataFrame of response predictions for each scenario/row in global_anomaly_df (tiled for each core_grouping)
+        heterogeneity_df: DataFrame with model heterogeneity stats for each core_grouping
+        models_dict: Dict of fitted MetaforModel objects for each core_grouping
+    """
+    (_, max_t, min_ph, _) = climatology_processing.calculate_extreme_climatology_values(
+        global_anomaly_df
+    )
 
-#     # prepare for alignment with climatology by uniquifying DOIs
-#     print(
-#         f"\nShape of dataframe with all rows marked for inclusion: {carbonate_df.shape}"
-#     )
+    response_df = pd.DataFrame()
+    heterogeneity_df = pd.DataFrame()
+    models_dict = {}
 
-#     # save selected columns of carbonate dataframe to file for reference
-#     carbonate_save_fields = file_ops.read_yaml(config.resources_dir / "mapping.yaml")[
-#         "carbonate_save_columns"
-#     ]
-#     carbonate_df[carbonate_save_fields].to_csv(
-#         config.tmp_data_dir / "carbonate_chemistry.csv", index=False
-#     )
+    for cg in tqdm(df["core_grouping"].unique()):
+        cg_df = df[df["core_grouping"] == cg].copy()
+        cg_model = metafor.MetaforModel(
+            cg_df,
+            effect_type=effect_type,
+            formula=f"{effect_type} ~ {model_formula}",
+            verbose=False,
+            cooks_distance_type=cooks_distance_type,
+        ).fit_model()
 
-#     # assign treatment groups
-#     carbonate_df_tgs = groups_processing.assign_treatment_groups_multilevel(
-#         carbonate_df
-#     )
+        models_dict[cg] = cg_model  # for downstream debugging/exploration
 
-#     carbonate_df_tgs_no_ones = (
-#         groups_processing.aggregate_treatments_rows_with_individual_samples(
-#             carbonate_df_tgs
-#         )
-#     )
-#     # calculate effect size
-#     print("\nCalculating effect sizes...")
-#     effects_df = calculate_effect_for_df(carbonate_df_tgs_no_ones).reset_index(
-#         drop=True
-#     )
+        # prepare model heterogeneity info
+        cg_het_df = cg_model.get_heterogeneity_dataframe()
+        cg_het_df["core_grouping"] = cg
+        heterogeneity_df = pd.concat([heterogeneity_df, cg_het_df], axis=0)
 
-#     # save results
-#     save_cols = file_ops.read_yaml(config.resources_dir / "mapping.yaml")["save_cols"]
-#     effects_df["year"] = pd.to_datetime(effects_df["year"]).dt.strftime(
-#         "%Y"
-#     )  # cast year from pd.timestamp to integer
-#     # check for missing columns in save_cols
-#     missing_columns = [col for col in save_cols if col not in effects_df.columns]
-#     if missing_columns:
-#         print(
-#             f"\nWARNING: The following columns in save_cols are not in effects_df: {missing_columns}"
-#         )
-#         # filter save_cols to only include columns that exist in effects_df
-#         available_save_cols = [col for col in save_cols if col in effects_df.columns]
-#         effects_df[available_save_cols].to_csv(
-#             config.tmp_data_dir / "effect_sizes.csv", index=False
-#         )
-#     else:
-#         effects_df[save_cols].to_csv(
-#             config.tmp_data_dir / "effect_sizes.csv", index=False
-#         )
+        # predict response surface for this grouping
+        model_surface, meshgrids = cg_model.predict_nd_surface_from_model(
+            moderator_names=["delta_t", "delta_ph"],
+            moderator_values=[
+                np.linspace(0, max_t, surface_resolution),
+                np.linspace(min_ph, 0, surface_resolution),
+            ],
+        )
 
-#     print(f"\nShape of dataframe with effect sizes: {effects_df.shape}")
+        cg_climatology = global_anomaly_df.copy()
+        cg_climatology.loc[:, "core_grouping"] = cg
 
-#     return effects_df
+        for k in model_surface.keys():  # for each climate scenario
+            cg_climatology.loc[:, k] = cg_climatology.apply(
+                lambda row: analysis_utils.get_value_from_surface(
+                    model_surface[k],
+                    meshgrids,
+                    row["anomaly_value_sst"],
+                    row["anomaly_value_ph"],
+                ),
+                axis=1,
+            )
 
+        # assign p-scores and certainty
+        dof = len(cg_df) - len(cg_model.coefficients)
+        cg_climatology = analysis_utils.assign_p_score_and_certainty(
+            cg_climatology, dof=dof
+        )
+        response_df = pd.concat([response_df, cg_climatology], axis=0)
 
-# def process_group_multivar(df: pd.DataFrame) -> pd.DataFrame:
-#     """
-#     Process a group of species data to calculate effect size.
-
-#     Args:
-#         df (pd.DataFrame): DataFrame containing data for a specific species
-
-#     Returns:
-#         pd.DataFrame: DataFrame with effect size calculations
-#     """
-
-#     def process_group(group, control_level_col):
-#         control_level = min(group[control_level_col])
-#         control_df = group[group[control_level_col] == control_level]
-#         treatment_df = group[group[control_level_col] > control_level]
-
-#         if treatment_df.empty:  # skip if there's no treatment data
-#             return
-
-#         control_series = calculate_control_values(control_df)
-
-#         # calculate effect size for each row in treatment_df and create a list of results
-#         effect_rows = []
-#         for _, row in treatment_df.iterrows():
-#             effect_row = calc_treatment_effect_for_row(row, control_series)
-#             effect_rows.append(effect_row)
-
-#         # concatenate all rows to create the effect_size DataFrame
-#         if effect_rows:
-#             effect_size = pd.concat(effect_rows, axis=1).T.copy()
-
-#             # update treatment label
-#             if control_level_col == "treatment_level_t":
-#                 effect_size["treatment_level_ph"] = group.name
-#                 if group.name >= 1:
-#                     effect_size["treatment"] = "temp_mv"
-#             elif control_level_col == "treatment_level_ph":
-#                 effect_size["treatment_level_t"] = group.name
-#                 if group.name >= 1:
-#                     effect_size["treatment"] = "phtot_mv"
-
-#             return effect_size
-#         return None
-
-#     # process each group and append results
-#     results_ph = df.groupby("treatment_level_ph").apply(
-#         process_group, control_level_col="treatment_level_t"
-#     )
-#     results_t = df.groupby("treatment_level_t").apply(
-#         process_group, control_level_col="treatment_level_ph"
-#     )
-
-#     def process_orthogonal_group(df):
-#         # identify absolute control
-#         control_df = df[df["treatment"] == "control"]
-#         control_series = calculate_control_values(control_df)
-
-#         # for each row where treatment_level_t == treatment_level_ph, calculate effect size
-#         treatment_df = df[
-#             (df["treatment_level_t"] == df["treatment_level_ph"])
-#             & (df["treatment"] != "control")
-#         ]
-#         if treatment_df.empty:
-#             return None
-#         # Calculate effect size for each row in treatment_df
-#         effect_rows = []
-
-#         for _, row in treatment_df.iterrows():
-#             effect_row = calc_treatment_effect_for_row(row, control_series)
-#             effect_rows.append(effect_row)
-#         # Concatenate all rows to create the effect_size DataFrame
-#         if effect_rows:
-#             effect_size = pd.concat(effect_rows, axis=1).T.copy()
-#             # update treatment label
-#             effect_size["treatment"] = "phtot_temp_mv"
-#             return effect_size
-
-#     # process orthogonal group
-#     results_orthogonal = process_orthogonal_group(df)
-
-#     results = []
-#     if not results_ph.empty:
-#         results.append(results_ph.reset_index(drop=True))
-#     if not results_t.empty:
-#         results.append(results_t.reset_index(drop=True))
-#     if results_orthogonal is not None:
-#         results.append(results_orthogonal)
-
-#     return results
+    return response_df, heterogeneity_df, models_dict
