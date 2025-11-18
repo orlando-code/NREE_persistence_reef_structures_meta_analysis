@@ -1,4 +1,4 @@
-This repository documents the code necessary to run the meta-analysis presented in the 'Persistence of coral reef structures into the 21st Century' paper in Nature Reviews Earth & Environment (202X).
+This repository documents the code necessary to run the meta-analysis presented in '*Persistence of coral reef structures into the 21st Century*' in Nature Reviews Earth & Environment (202X).
 
 
 # How to use this repository
@@ -16,7 +16,7 @@ To get started with the analysis, you need to set up a Python environment with t
 We recommend using **either** Python virtual environments (`venv`) **or** `conda` environments. All required dependencies are specified in `pyproject.toml`.
 
 #### **Option 1: Using `venv` (standard Python virtual environment)**
-First, make sure you have Python 3.10+ installed.
+First, make sure you have Python 3.10+ installed:
 
 ```bash
 python -m venv .venv
@@ -47,22 +47,22 @@ You're now ready to proceed with data download and organisation!
 The paper and its visualisations make use of a number of datasets. Not all are required for every figure. In order of importance (number of figures relying on them) the datasets are:
 
 a. **Raw extracted calcification data**  
-   This data was manually extracted from 122 papers following a systematic review. The dataset generated, detailing measured calcification and bioerosion rates alongside the experimental carbonate conditions, is available at xxx.
+   This data was manually extracted from 122 papers following a systematic review. The dataset generated, detailing measured calcification and bioerosion rates alongside the experimental carbonate conditions, is available at xxx<sup>1</sup>.
 
 b. **Hindcast and forecasted environmental conditions**  
    Past and future pH and sea surface temperature conditions from the Coupled Model Intercomparison Project Version 6 (CMIP6) are provided for the sites of interest as `.csv` files in the `data/climatology/` directory in the repository.
 
 c. **MEOW shapefiles**  
-   The Marine Ecoregions of the World (MEOW) dataset is used to visualise the distribution of survey sites. This can be downloaded from the [Resource Watch](https://resourcewatch.org/data/explore/Marine-Ecoregions?section=Discover&selectedCollection=&zoom=3&lat=0&lng=0&pitch=0&bearing=0&basemap=dark&labels=light&layers=%255B%257B%2522dataset%2522%253A%252236803484-c413-49a9-abe2-2286ee99b624%2522%252C%2522opacity%2522%253A1%252C%2522layer%2522%253A%25222dd860af-21be-47c6-8e1d-0b8eb63bfa46%2522%257D%255D&aoi=&page=1&sort=most-viewed&sortDirection=-1) 'Marine Ecoregions' page.
+   The Marine Ecoregions of the World (MEOW)<sup>2</sup> dataset is used to visualise the distribution of survey sites. This can be downloaded from the [Resource Watch](https://resourcewatch.org/data/explore/Marine-Ecoregions?section=Discover&selectedCollection=&zoom=3&lat=0&lng=0&pitch=0&bearing=0&basemap=dark&labels=light&layers=%255B%257B%2522dataset%2522%253A%252236803484-c413-49a9-abe2-2286ee99b624%2522%252C%2522opacity%2522%253A1%252C%2522layer%2522%253A%25222dd860af-21be-47c6-8e1d-0b8eb63bfa46%2522%257D%255D&aoi=&page=1&sort=most-viewed&sortDirection=-1) 'Marine Ecoregions' page.
 
 d. **UNEP-WCMC GDCR**  
-   The Global Distribution of Coral Reefs from UNEP-WCMC is used to visualise the distribution of reef cover in relation to the survey sites. The distribution of warm-water corals can be downloaded from [https://doi.org/10.34892/t2wk-5t34](https://doi.org/10.34892/t2wk-5t34).
+   The Global Distribution of Coral Reefs from UNEP-WCMC<sup>3</sup> is used to visualise the distribution of reef cover in relation to the survey sites. The distribution of warm-water corals can be downloaded from [https://doi.org/10.34892/t2wk-5t34](https://doi.org/10.34892/t2wk-5t34).
 
 e. **Forecasted coral cover**  
-   The response of coral cover to changing environmental conditions (from DOI xxxx) is included as an `.xlsx` file. This is used to contextualise the predicted decline in coral calcification rates in Figure 2 of the main manuscript.
+   The response of coral cover to changing environmental conditions from DOI xxxx<<sup>4</sup>> is included as an `.xlsx` file. This is used to contextualise the predicted decline in coral calcification rates in Figure 2 of the main manuscript.
 
 f. **Emissions associated with RCPs**  
-   To provide an alternative reference level for calcification rates, Figure 2 can be plotted against CO$_2$ emissions provided in [10.5194/gmd-13-3571-2020](10.5194/gmd-13-3571-2020).
+   To provide an alternative reference level for calcification rates, Figure 2 can be plotted against CO$_2$ emissions provided in [10.5194/gmd-13-3571-2020](10.5194/gmd-13-3571-2020)<sup>5</sup>.
 
 ## 2. <ins>Organise</ins> the datasets into the correct structure. Please see below for the necessary repository structure:
 
@@ -100,7 +100,7 @@ calcification_meta_analysis/
     └── utils.py           # General utility functions
 |
 └── data/
-    ├── climatology/
+    └── climatology/
         ├── MEOW/            # (c.) currently empty, populate as detailed above
         ├── coral_cover_ph_scenarios_output_table_site_locations.csv    # (b.)
         ├── coral_cover_sst_scenarios_output_table_site_locations.csv   # (b.)
@@ -127,7 +127,7 @@ calcification_meta_analysis/
 This optionally generates the plots and saves them to a local directory.
 
 
-### Resources
+### Resources directory
 
 While the following files are created automatically by the analysis pipeline, the complete files are included in the repository for ease (and speed) of use.
 
@@ -160,13 +160,18 @@ Contains taxonomic mapping information including genus, species, family, and hig
 
 Taxonomic data (genus, species, family, taxa) was assigned based on the reported species binomial via the World Register of Marine Species (WoRMS) ‘AphiaRecordsByName’ API (https://www.marinespecies.org/rest/)
 
+### Contact
+
+If you spot something odd or otherwise have any feedback on this codebase, please do get in touch via a [GitHub Issue](https://github.com/orlando-code/NREE_persistence_reef_structures_meta_analysis/issues).
 
 ## References
 
-Meinshausen, M., Nicholls, Z. R. J., Lewis, J., Gidden, M. J., Vogel, E., Freund, M., Beyerle, U., Gessner, C., Nauels, A., Bauer, N., Canadell, J. G., Daniel, J. S., John, A., Krummel, P. B., Luderer, G., Meinshausen, N., Montzka, S. A., Rayner, P. J., Reimann, S., Smith, S. J., van den Berg, M., Velders, G. J. M., Vollmer, M. K., and Wang, R. H. J.: The shared socio-economic pathway (SSP) greenhouse gas concentrations and their extensions to 2500, Geosci. Model Dev., 13, 3571–3605, https://doi.org/10.5194/gmd-13-3571-2020, 2020.
+<sup>1</sup> DATA REPO
 
-Mark D. Spalding, Helen E. Fox, Gerald R. Allen, Nick Davidson, Zach A. Ferdaña, Max Finlayson, Benjamin S. Halpern, Miguel A. Jorge, Al Lombana, Sara A. Lourie, Kirsten D. Martin, Edmund McManus, Jennifer Molnar, Cheri A. Recchia, James Robertson, Marine Ecoregions of the World: A Bioregionalization of Coastal and Shelf Areas, BioScience, Volume 57, Issue 7, July 2007, Pages 573–583, https://doi.org/10.1641/B570707
+<sup>2</sup> Mark D. Spalding, Helen E. Fox, Gerald R. Allen, Nick Davidson, Zach A. Ferdaña, Max Finlayson, Benjamin S. Halpern, Miguel A. Jorge, Al Lombana, Sara A. Lourie, Kirsten D. Martin, Edmund McManus, Jennifer Molnar, Cheri A. Recchia, James Robertson, Marine Ecoregions of the World: A Bioregionalization of Coastal and Shelf Areas, BioScience, Volume 57, Issue 7, July 2007, Pages 573–583, https://doi.org/10.1641/B570707
 
-UNEP-WCMC, WorldFish Centre, WRI, TNC (2021). Global distribution of coral reefs, compiled from multiple sources including the Millennium Coral Reef Mapping Project. Version 4.1, updated by UNEP-WCMC. Includes contributions from IMaRS-USF and IRD (2005), IMaRS-USF (2005) and Spalding et al. (2001). Cambridge (UK): UN Environment Programme World Conservation Monitoring Centre. Data DOI: https://doi.org/10.34892/t2wk-5t34
+<sup>3</sup> UNEP-WCMC, WorldFish Centre, WRI, TNC (2021). Global distribution of coral reefs, compiled from multiple sources including the Millennium Coral Reef Mapping Project. Version 4.1, updated by UNEP-WCMC. Includes contributions from IMaRS-USF and IRD (2005), IMaRS-USF (2005) and Spalding et al. (2001). Cambridge (UK): UN Environment Programme World Conservation Monitoring Centre. Data DOI: https://doi.org/10.34892/t2wk-5t34
 
-XXX Cover paper
+<sup>4</sup> Cover paper
+
+<sup>5</sup> Meinshausen, M., Nicholls, Z. R. J., Lewis, J., Gidden, M. J., Vogel, E., Freund, M., Beyerle, U., Gessner, C., Nauels, A., Bauer, N., Canadell, J. G., Daniel, J. S., John, A., Krummel, P. B., Luderer, G., Meinshausen, N., Montzka, S. A., Rayner, P. J., Reimann, S., Smith, S. J., van den Berg, M., Velders, G. J. M., Vollmer, M. K., and Wang, R. H. J.: The shared socio-economic pathway (SSP) greenhouse gas concentrations and their extensions to 2500, Geosci. Model Dev., 13, 3571–3605, https://doi.org/10.5194/gmd-13-3571-2020, 2020.
