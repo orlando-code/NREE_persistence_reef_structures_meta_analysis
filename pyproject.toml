@@ -21,9 +21,49 @@ packages = ["calcification_meta_analysis"]
 
 requires-python = ">=3.11"
 dependencies = [
-    "pandas >= 2.1.1",
-    "numpy >= 2.0.3",
-    "matplotlib >= 3.9.3",
+    # Core data science
+    "pandas == 2.3.3",
+    "numpy == 2.3.4",
+    "scipy == 1.16.2",
+    
+    # Visualization
+    "matplotlib == 3.10.7",
+    "seaborn == 0.13.2",
+    "cartopy == 0.25.0",
+    "Pillow == 11.3.0",
+    
+    # Geospatial
+    "geopandas == 1.1.1",
+    "shapely == 2.1.2",
+    
+    # Statistics and machine learning
+    "statsmodels == 0.14.5",
+    "scikit-learn == 1.7.2",
+    
+    # R integration
+    "rpy2 == 3.6.4",
+    
+    # File handling
+    "openpyxl == 3.1.5",
+    "PyYAML == 6.0.3",
+    
+    # Utilities
+    "tqdm == 4.67.1",
+    "requests == 2.32.5",
+    "googlemaps == 4.10.0",
+    
+    # Specialized
+    "cbsyst == 0.4.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest >= 7.4.0",
+    "black >= 23.0.0",
+    "ruff >= 0.1.0",
+    "mypy >= 1.5.0",
+    "jupyter >= 1.0.0",
+    "ipykernel == 7.0.1",
 ]
 
 repository = "https://github.com/orlando-code/NREE_persistence_reef_structures_meta_analysis/"
