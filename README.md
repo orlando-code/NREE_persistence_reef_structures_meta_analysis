@@ -132,6 +132,8 @@ calcification_meta_analysis/
 This optionally generates the plots and saves them to a local directory.
 
 
+---
+
 ### Resources directory
 
 While the following files are created automatically by the analysis pipeline, the complete files are included in the repository for ease (and speed) of use.
@@ -165,9 +167,13 @@ Contains taxonomic mapping information including genus, species, family, and hig
 
 Taxonomic data (genus, species, family, taxa) was assigned based on the reported species binomial via the World Register of Marine Species (WoRMS) ‘AphiaRecordsByName’ API (https://www.marinespecies.org/rest/)
 
+---
+
 ### Contact
 
 If you spot something odd or otherwise have any feedback on this codebase, please do get in touch via a [GitHub Issue](https://github.com/orlando-code/NREE_persistence_reef_structures_meta_analysis/issues).
+
+--- 
 
 ## References
 
