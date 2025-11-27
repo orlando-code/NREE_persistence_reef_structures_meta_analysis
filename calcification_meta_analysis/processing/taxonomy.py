@@ -20,7 +20,7 @@ def assign_taxonomical_info(df: pd.DataFrame) -> pd.DataFrame:
         create_species_mapping_yaml(df.species_types.unique())
     else:
         # TODO: confirm that there aren't any extra species
-        logger.info(f"Using species mapping in {mapping_path}")
+        logger.info(f"Using species mapping in {'/'.join(mapping_path.parts[-3:])}")
     species_mapping = file_ops.read_yaml(mapping_path)
     species_fields = ["family", "functional_group", "core_grouping"]
     for field in species_fields:
@@ -123,7 +123,7 @@ def create_species_mapping_yaml(species_list: list[str]) -> None:
         }
     mapping_path = config.resources_dir / "species_mapping.yaml"
     file_ops.write_yaml(species_mapping, mapping_path)
-    logger.info(f"Species mapping saved to {mapping_path}")
+    logger.info(f"Species mapping saved to {'/'.join(mapping_path.parts[-3:])}")
 
 
 def assign_functional_group(taxon_info: dict) -> str:

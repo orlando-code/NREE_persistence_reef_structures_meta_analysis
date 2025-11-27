@@ -129,7 +129,7 @@ def main():
     data_for_r.to_csv(output_file, index=False)
 
     # --- summarise results ---
-    print(f"\nData saved to {output_file}")
+    print(f"\nData saved to {'/'.join(output_file.parts[-3:])}")
     print(f"Final dataset: {data_for_r.shape}")
     print(f"Columns saved: {list(data_for_r.columns)}")
 

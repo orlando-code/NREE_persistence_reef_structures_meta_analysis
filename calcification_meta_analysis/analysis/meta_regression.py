@@ -119,7 +119,7 @@ class MetaforModel:
         summary_fp = summary_fp or config.results_dir / "metafor_summary.txt"
         with open("summary.txt", "w") as f:
             f.write(str(self.summary))
-        logger.info(f"Summary saved to {summary_fp}")
+        logger.info(f"Summary saved to {'/'.join(summary_fp.parts[-3:])}")
 
     def _get_r_df(self) -> ro.vectors.DataFrame:
         """Get the R dataframe for the model."""

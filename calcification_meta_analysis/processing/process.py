@@ -42,7 +42,7 @@ def process_extracted_calcification_data(
     # save to r-ready csv if not already present
     if not (config.data_dir / save_name).exists() or overwrite:
         effect_sizes_df.to_csv(config.data_dir / save_name, index=False)
-        print(f"Saved to {config.data_dir / save_name}")
+        print(f"Saved to {'/'.join((config.data_dir / save_name).parts[-3:])}")
     return effect_sizes_df
 
 

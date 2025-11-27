@@ -35,7 +35,7 @@ def save_fig(
     )
     fig.savefig(fig_fp, dpi=300, bbox_inches="tight")
 
-    print(f"Figure saved to {fig_fp}")
+    print(f"Figure saved to {'/'.join(fig_fp.parts[-3:])}")
 
 
 def annotate_axes_with_letters(

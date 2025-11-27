@@ -593,7 +593,7 @@ class MetaforModel:
         try:
             with open(summary_fp, "w") as f:
                 f.write(self.get_model_summary_text())
-            logger.info(f"Summary saved to {summary_fp}")
+            logger.info(f"Summary saved to {'/'.join(summary_fp.parts[-3:])}")
         except Exception as e:
             logger.error(f"Failed to save summary: {e}")
 
