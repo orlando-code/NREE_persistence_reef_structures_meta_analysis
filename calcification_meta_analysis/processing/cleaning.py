@@ -42,7 +42,7 @@ def fill_metadata(df: pd.DataFrame) -> pd.DataFrame:
         if pd.isna(row["authors"]) and not pd.isna(row["doi"])
         else np.nan,
         axis=1,
-    )  # N.B. for highlighted processing this gets all the dois
+    )  # N.B. for highlighted processing (with no author data) this gets all the dois
     if not df["doi_without_authors"].isna().all():
         dois_without_authors = (
             df["doi_without_authors"][~df["doi_without_authors"].isna()]
