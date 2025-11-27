@@ -1,0 +1,520 @@
+Acropora austera:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora cerealis:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora cervicornis:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora digitifera:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora formosa:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora hyacinthus:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora intermedia:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora millepora:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora muricata:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora nana:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora nasuta:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora palmata:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora pulchra:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora spicifera:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora spp.:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora spp. (millepora and hemprichii):
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora tenuis:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora variabilis:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora verweyi:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Acropora yongei:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Agaricia agaricites:
+  core_grouping: Coral
+  family: Agariciidae
+  functional_group: Hard coral
+Agaricia tenuifolia:
+  core_grouping: Coral
+  family: Agariciidae
+  functional_group: Hard coral
+Amphiroa anceps:
+  core_grouping: Other algae
+  family: Lithophyllaceae
+  functional_group: Articulated coralline algae
+Amphiroa cf. fragilissima:
+  core_grouping: Other algae
+  family: Lithophyllaceae
+  functional_group: Articulated coralline algae
+Amphiroa fragilissima:
+  core_grouping: Other algae
+  family: Lithophyllaceae
+  functional_group: Articulated coralline algae
+Amphiroa tribulus:
+  core_grouping: Other algae
+  family: Lithophyllaceae
+  functional_group: Articulated coralline algae
+Amphistegina gibbosa:
+  core_grouping: Foraminifera
+  family: Amphisteginidae
+  functional_group: Foraminifera
+Amphistegina lessonii:
+  core_grouping: Foraminifera
+  family: Amphisteginidae
+  functional_group: Foraminifera
+Calcarina gaudichaudii:
+  core_grouping: Foraminifera
+  family: Calcarinidae
+  functional_group: Foraminifera
+Corallina officinalis:
+  core_grouping: CCA
+  family: Corallinaceae
+  functional_group: Crustose coralline algae
+Corallina sessilis:
+  core_grouping: CCA
+  family: Corallinaceae
+  functional_group: Crustose coralline algae
+Cyphastrea chalcidicum:
+  core_grouping: Coral
+  family: Merulinidae
+  functional_group: Hard coral
+Dichocoenia stokesii:
+  core_grouping: Coral
+  family: Meandrinidae
+  functional_group: Hard coral
+Dichotomaria marginata:
+  core_grouping: Other algae
+  family: Galaxauraceae
+  functional_group: Fleshy algae
+Echinopora lamellosa:
+  core_grouping: Coral
+  family: Merulinidae
+  functional_group: Hard coral
+Favites colemani:
+  core_grouping: Coral
+  family: Merulinidae
+  functional_group: Hard coral
+Fungia scutaria:
+  core_grouping: Coral
+  family: Fungiidae
+  functional_group: Hard coral
+Galaxaura rugosa:
+  core_grouping: Other algae
+  family: Galaxauraceae
+  functional_group: Other algae
+Galaxea fascicularis:
+  core_grouping: Coral
+  family: Euphylliidae
+  functional_group: Hard coral
+Goniopora sp.:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Halimeda copiosa:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda cylindracea:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda discoidea:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda goreaui:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda heteromorpha:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda incrassata:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda macroloba:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda monile:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda opuntia:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda scabra:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda simulans:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda taenicola:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Halimeda tuna:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Hydrolithon reinboldii:
+  core_grouping: CCA
+  family: Hydrolithaceae
+  functional_group: Crustose coralline algae
+Hydrolithon samoense:
+  core_grouping: CCA
+  family: Hydrolithaceae
+  functional_group: Crustose coralline algae
+Hydrolithon sp.:
+  core_grouping: CCA
+  family: Hydrolithaceae
+  functional_group: Crustose coralline algae
+Isopora palifera:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Jania adhaerens:
+  core_grouping: Other algae
+  family: Corallinaceae
+  functional_group: Articulated coralline algae
+Leptastrea purpurea:
+  core_grouping: Coral
+  family: Leptastreidae
+  functional_group: Hard coral
+Lithophyllum cf insipidum:
+  core_grouping: CCA
+  family: Lithophyllaceae
+  functional_group: Crustose coralline algae
+Lithophyllum congestum:
+  core_grouping: CCA
+  family: Lithophyllaceae
+  functional_group: Crustose coralline algae
+Lithophyllum flavescens:
+  core_grouping: CCA
+  family: Lithophyllaceae
+  functional_group: Crustose coralline algae
+Lithophyllum kotschyanum:
+  core_grouping: CCA
+  family: Lithophyllaceae
+  functional_group: Crustose coralline algae
+Lithophyllum prototypum:
+  core_grouping: CCA
+  family: Lithophyllaceae
+  functional_group: Crustose coralline algae
+Lithophyllum sp.:
+  core_grouping: CCA
+  family: Lithophyllaceae
+  functional_group: Crustose coralline algae
+Lithothamnion proliferum:
+  core_grouping: CCA
+  family: Hapalidiaceae
+  functional_group: Crustose coralline algae
+Lithothamnion sp.:
+  core_grouping: CCA
+  family: Hapalidiaceae
+  functional_group: Crustose coralline algae
+Lobactis scutaria:
+  core_grouping: Coral
+  family: Fungiidae
+  functional_group: Hard coral
+Marginopora vertebralis:
+  core_grouping: Foraminifera
+  family: Soritidae
+  functional_group: Foraminifera
+Massive porites:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Melyvonnea madagascariensis:
+  core_grouping: CCA
+  family: Mesophyllumaceae
+  functional_group: Crustose coralline algae
+Montastraea cavernosa:
+  core_grouping: Coral
+  family: Montastraeidae
+  functional_group: Hard coral
+Montipora aequituberculata:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Montipora capitata:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Montipora capricornis:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Montipora digitata:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Montipora flabellata:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Montipora monasteriata:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Montipora patula:
+  core_grouping: Coral
+  family: Acroporidae
+  functional_group: Hard coral
+Neogoniolithon frutescens:
+  core_grouping: CCA
+  family: Spongitidaceae
+  functional_group: Crustose coralline algae
+Neogoniolithon sp.:
+  core_grouping: CCA
+  family: Spongitidaceae
+  functional_group: Crustose coralline algae
+Neogoniolithon strictum:
+  core_grouping: CCA
+  family: Spongitidaceae
+  functional_group: Crustose coralline algae
+Operculina ammonoides:
+  core_grouping: Foraminifera
+  family: Nummulitidae
+  functional_group: Foraminifera
+Orbicella annularis:
+  core_grouping: Coral
+  family: Merulinidae
+  functional_group: Hard coral
+Orbicella faveolata:
+  core_grouping: Coral
+  family: Merulinidae
+  functional_group: Hard coral
+Pavona cactus:
+  core_grouping: Coral
+  family: Agariciidae
+  functional_group: Hard coral
+Peyssonnelia sp.:
+  core_grouping: Other algae
+  family: Peyssonneliaceae
+  functional_group: Other algae
+Pocillopora acuta:
+  core_grouping: Coral
+  family: Pocilloporidae
+  functional_group: Hard coral
+Pocillopora damicornis:
+  core_grouping: Coral
+  family: Pocilloporidae
+  functional_group: Hard coral
+Pocillopora meandrina:
+  core_grouping: Coral
+  family: Pocilloporidae
+  functional_group: Hard coral
+Pocillopora verrucosa:
+  core_grouping: Coral
+  family: Pocilloporidae
+  functional_group: Hard coral
+Porites astreoides:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites australiensis:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites compressa:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites cylindrica:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites divaricata:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites evermanni:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites irregularis:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites lobata:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites lutea:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites lutea/lobata:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites murrayensis:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites panamensis:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites porites:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites rus:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites sp:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites sp.:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porites spp.:
+  core_grouping: Coral
+  family: Poritidae
+  functional_group: Hard coral
+Porolithon cf onkodes:
+  core_grouping: CCA
+  family: Porolithaceae
+  functional_group: Crustose coralline algae
+Porolithon cf. onkodes:
+  core_grouping: CCA
+  family: Porolithaceae
+  functional_group: Crustose coralline algae
+Porolithon onkodes:
+  core_grouping: CCA
+  family: Porolithaceae
+  functional_group: Crustose coralline algae
+Psammocora contigua:
+  core_grouping: Coral
+  family: Psammocoridae
+  functional_group: Hard coral
+Psammocora sp.:
+  core_grouping: Coral
+  family: Psammocoridae
+  functional_group: Hard coral
+Pseudodiploria clivosa:
+  core_grouping: Coral
+  family: Faviidae
+  functional_group: Hard coral
+Pseudodiploria strigosa:
+  core_grouping: Coral
+  family: Faviidae
+  functional_group: Hard coral
+Rhodolith CCA:
+  core_grouping: CCA
+  family: Corallinaceae-Sporolithaceae
+  functional_group: Crustose coralline algae
+Rhodophyta CCA:
+  core_grouping: CCA
+  family: Corallinaceae-Sporolithaceae
+  functional_group: Crustose coralline algae
+Seriatopora caliendrum:
+  core_grouping: Coral
+  family: Pocilloporidae
+  functional_group: Hard coral
+Seriatopora hystrix:
+  core_grouping: Coral
+  family: Pocilloporidae
+  functional_group: Hard coral
+Siderastrea radians:
+  core_grouping: Coral
+  family: Rhizangiidae
+  functional_group: Hard coral
+Siderastrea siderea:
+  core_grouping: Coral
+  family: Rhizangiidae
+  functional_group: Hard coral
+Solenastrea hyades:
+  core_grouping: Coral
+  family: Scleractinia family incertae sedis
+  functional_group: Hard coral
+Sporolithon cf durum:
+  core_grouping: CCA
+  family: Sporolithaceae
+  functional_group: Crustose coralline algae
+Sporolithon cf. durum:
+  core_grouping: CCA
+  family: Sporolithaceae
+  functional_group: Crustose coralline algae
+Sporolithon durum:
+  core_grouping: CCA
+  family: Sporolithaceae
+  functional_group: Crustose coralline algae
+Stylophora pistillata:
+  core_grouping: Coral
+  family: Pocilloporidae
+  functional_group: Hard coral
+Turbinaria reniformis:
+  core_grouping: Coral
+  family: Dendrophylliidae
+  functional_group: Hard coral
+Udotea flabellum:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Udotea luna:
+  core_grouping: Halimeda
+  family: Halimedaceae
+  functional_group: Halimeda
+Unknown CCA:
+  core_grouping: CCA
+  family: Corallinaceae-Sporolithaceae
+  functional_group: Crustose coralline algae
