@@ -1,0 +1,3 @@
+The Global Distribution of Coral Reefs from UNEP-WCMC<sup>*</sup> is used to visualise the distribution of reef cover in relation to the survey sites. The distribution of warm-water corals can be downloaded from [https://doi.org/10.34892/t2wk-5t34](https://doi.org/10.34892/t2wk-5t34).
+
+<sup>*</sup> UNEP-WCMC, WorldFish Centre, WRI, TNC (2021). Global distribution of coral reefs, compiled from multiple sources including the Millennium Coral Reef Mapping Project. Version 4.1, updated by UNEP-WCMC. Includes contributions from IMaRS-USF and IRD (2005), IMaRS-USF (2005) and Spalding et al. (2001). Cambridge (UK): UN Environment Programme World Conservation Monitoring Centre. Data DOI: https://doi.org/10.34892/t2wk-5t34
