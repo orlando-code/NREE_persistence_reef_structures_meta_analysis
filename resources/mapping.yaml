@@ -1,0 +1,448 @@
+unit_map:
+## absolute rates
+# mass CaCO3
+  ugCaCO3 mm-2d-1:
+    - ug mm-2day-1
+  ugCaCO3 cm-2d-1: 
+    - ug cm-2d-1
+    - μg cm-2d-1
+  ugCaCO3 cm-2hr-1:
+    - μgCaCO3 cm-2hr-1
+  ugCaCO3 g-1hr-1:
+    - μmol CaCO3  g−1 h−1
+  mgCaCO3 cm-2d-1:  # per area
+    - mg CaCO3 cm-2 d-1
+    - mg CaCO3 cm−2 d−1
+    - mgCaCO3 cm-2d-1
+    - mgCaCO3 cm-2d-1
+    - mgCaCO3 cm-2day-1
+    - mg cm-2day-1
+    - mgCaCO3 cm−2d−1
+    - mgCaCO3 d-1cm-2
+    - "mgCaCO3 cm-2d-1 "
+    - mg cm-2d-1
+    - mg CaCO3 cm-2 day-1
+  mgCaCO3 cm-2wk-1:
+    - mgCaCO3 cm-2wk-1
+  mgCaCO3 cm-2month-1:
+    - mgCaCO3 cm-2month-1
+    - mg CaCO3 cm-2 month-1
+  mgCaCO3 mg-1d-1:  # per mass
+    - mgCaCO3 mg-1d-1
+    - mgCaCO3 mg-1day-1
+    - mg mg-1day-1
+    - mgCaCO3 mg-1d−1
+  mgCaCO3 g-1hr-1:  # per mass
+    - mgCaCO3 gFW-1hr-1
+    - mgCaCO3 g-1hr-1
+  mgCaCO3 g-1d-1:  # per mass
+    - mg g-1d-1
+    - mgCaCO3 g-1d-1
+    - mg g-1day-1
+    - "mg CaCO3 g-1 d-1 "
+    - mg CaCO3 g−1 d−1
+    - mgCaCO3 g-1day-1
+  gCaCO3 g-1d-1:  # per mass
+    - gCaCO3 g-1day-1
+    # - gCaCO3 g-1day-1
+  gCaCO3 cm-2d-1:  # per area
+    - gCaCO3 cm-2day-1
+    - gBW cm-2day-1
+  gCaCO3 cm-2y-1:
+    - gCaCO3 cm-2yr-1
+  kgDW m-2d-1:
+    - kgDW  m-2day-1
+  kgCaCO3 m-2y-1:
+    - kg CaCO3 m-2 yr-1
+# moles CaCO3
+  nmolCaCO3 mg-1d-1:  # per mass
+    - nmol CaCO3 mg-1day-1
+  nmolCaCO3 g-1d-1:
+    - nmolCaCO3 g−1day-1
+  nmolCaCO3 cm-2hr-1:  # per area
+    - nmolCaCO3 cm-2hr-1
+  umolCaCO3 g-1hr-1:  # per mass
+    - umol g-1h-1
+    - umol gDW-1h-1
+    - umol g-1hr-1
+    - umol C gBW-1day-1
+    - umolCaCO3 g-1h-r
+    - μmol CaCO3  g−1  h−1
+    - μmolCaCO3 g-1hr-1
+    - μmolCaCO3 gDW-1hr-1
+    - μmol g-1hr-1
+    - μmol gDW-1h-1
+    - umolCaCO3 g-1h-1
+    - " μmol CaCO3 gDW−1 h−1"
+    - umol CaCO3 h-1 g-1
+  umolCaCO3 g-1d-1: # per mass
+    - umolC  gWW−1day−1
+    - μmolCaCO3 g−1d−1
+    - μmolC  gWW−1day−1
+    - umol g-1d-1
+    - umolCaCO3 g-1d-1
+    - μmolCaCO3 g-1d-1
+  umolCaCO3 m-2s-1:
+    - umol m-2s-1
+  umolCaCO3 cm-2d-1:  # per area
+    - umolCaCO3 cm-2day-1
+    - umol C cm-2day-1
+    - μmol CaCO3 cm-2 d-1
+    - μmolCaCO3 cm-2day-1
+  umolCaCO3 mm-2d-1:  # per area
+    - μmolCaCO3 mm-2 d-1
+  umolCaCO3 cm-2hr-1: # per area
+    - umolCaCO3 cm-2h-1
+    - umolCaCO3 cm-2hr-1
+    - ug cm-2hr-1
+    - umol cm-2hr-1
+    - " μmol CaCO3 cm−2 h−1"
+    - μmolCaCO3 cm–2hr–1
+    - μmolCaCO3 cm-2hr-1
+    - μmol cm-2hr-1
+    - umol CaCO3 cm-2h-1
+  umolCaCO3 g−1d−1: # per mass
+    - umolC gWW−1day−1
+# per specimen
+  umol d-1:
+    - umol d-1 (per colony)
+  ug d-1:
+    - ug day-1 (per specimen)
+    - μg day-1 (per specimen)
+    - μgCaCO3 d-1 (per specimen)
+    - ug polyp-1day-1
+    - ug d-1
+  mg d-1:
+    - mgCaCO3 d-1
+    - mgWW day-1
+    - mgWW day-1 (per specimen)
+    - mg d-1
+    - mgCaCO3 day-1
+    - mg day-1
+  g d-1:
+    - g day-1
+    - gBW day-1
+    - g day-1 (per specimen)
+    - gBW day-1 (per specimen)
+  g y-1:
+    - g yr-1
+# geometric
+  cm2 y-1:  # SA
+    - cm2 y-1
+  mm2 d-1:
+    - mm2 / bud day-1
+    - mm2 day-1 polyp-1
+  mm2 month-1:
+    - mm2 month-1
+  deltaSA d-1:  # relative SA
+    - "% surface area d-1"
+  deltaSA hr-1:
+    - "%changeSA/hour"
+  mm d-1: # linear extension
+    - mm day-1
+  um d-1:
+    - μm d-1
+    - um d-1
+    - um day-1
+# relative mass rates
+  deltaMass d-1:
+    - "%changeDW day-1"
+    - "%changeBW day-1"
+    - "% change gDWday-1"
+    - "% changeBW day-1"
+    - "% changeBW day-1"
+    - "% change BW day-1"
+    - "% change BW day-1"
+    - "% change gDWday-1"
+    - "% change in biomass day−1"
+    - "% changeBW day-1"
+    - "%BW change day-1"
+    - "%changeBW day-1"
+    - "%changeDW day-1"
+    - "delta %BW day-1"
+    - "%change BW day-1"
+    - "%g day-1"
+    - "%BW day-1"
+    - "% CaCO3 d-1"
+    - "% dry weight change"
+    - "%mass day-1"
+    - "%/day"
+    - ug day-1
+  deltaMass wk-1:
+    - "%change BWweek-1"
+    - "%growth week-1"
+  deltaMass month-1:
+    - "%mass month-1"
+    - "%BW month-1"
+
+
+sheet_column_map:
+  pCO2 (uatm):
+    pCO2
+  pH (NBS):
+    pHNBS
+  pH (SWS):
+    pHSWS
+  pH (Total):
+    pHtot
+  TA (umol kg-1):
+    TA
+  DIC (umol/L):
+    DIC
+  omegaCa:
+    omegaC
+  omegaAr:
+    omegaA
+  CO32– (umol kg SW-1):
+    CO3
+  HCO3- (umol kg SW-1):
+    HCO3
+  DO (mg l-1):
+    DO
+  Irradiance (umol photons m-2 s-1):
+    Irr
+  Integrated PAR (mol quanta m-2day-1):
+    IPAR
+  Temperature (oC):
+    Temp
+  Salinity (ppt):
+    Sal
+  DOI:
+    doi
+  Year:
+    year
+  Location:
+    location
+  Latitude:
+    latitude
+  Longitude:
+    longitude
+  Ecoregion:
+    ecoregion
+  Latitudinal zone:
+    lat_zone
+  Oceanic realm:
+    realm
+  Family:
+    family
+  Genus:
+    genus
+  Species:
+    species
+  Functional group:
+    functional_group
+  Core grouping:
+    core_grouping
+  Taxa:
+    taxa
+  Calcification rate:
+    calcification
+  Calcification rate standard error:
+    calcification_se
+  Calcification rate standard deviation:
+    calcification_sd
+  Calcification unit:
+    calcification_unit
+  Standardised calcification rate:
+    st_calcification
+  Standardised calcification rate standard error:
+    st_calcification_se
+  Standardised calcification rate standard deviation:
+    st_calcification_sd
+  Standardised calcification unit:
+    st_calcification_unit
+  Number of replicates:
+    n
+  Cohens d:
+    cohens_d
+  Duration (days):
+    duration
+
+carbonate_chemistry_params:
+  - pco2
+  - phtot
+  - ta
+  - dic
+  - omegac
+  - omegaa
+  - co3
+  - hco3
+
+carbonate_chemistry_cols:
+  - doi
+  - pco2  
+  - phnbs
+  - phsws
+  - phtot
+  - ta
+  - dic
+  - omegac
+  - omegaa
+  - co3
+  - hco3
+  - temp
+  - sal
+
+
+save_cols:
+  - extractor
+  - authors
+  - doi
+  - original_doi
+  - year
+  - location
+  - latitude
+  - longitude
+  - ecoregion
+  - lat_zone
+  - realm
+  - family
+  - genus
+  - species
+  - functional_group
+  - core_grouping
+  - taxa
+  - irr
+  - irr_group
+  - temp
+  - phtot
+  - treatment_group
+  - treatment_level_t
+  - treatment_level_ph
+  - treatment
+  - delta_t
+  - delta_ph
+  - control_calcification
+  - control_calcification_sd
+  - treatment_calcification
+  - treatment_calcification_sd
+  - calcification_unit
+  - st_control_calcification
+  - st_control_calcification_sd
+  - st_treatment_calcification
+  - st_treatment_calcification_sd
+  - st_calcification_unit
+  - n
+  - cohens_d
+  - cohens_d_var
+  - hedges_g
+  - hedges_g_var
+  - relative_calcification
+  - relative_calcification_var
+  - absolute_calcification
+  - absolute_calcification_var
+  - st_relative_calcification
+  - st_relative_calcification_var
+  - st_absolute_calcification
+  - st_absolute_calcification_var
+
+carbonate_save_columns:
+  - authors
+  - taxa
+  - year 
+  - doi
+  - original_doi
+  - functional_group
+  - core_grouping
+  - family 
+  - genus 
+  - species
+  - location 
+  - coords
+  - pco2 
+  # - pco2_sd 
+  # - pco2_se
+  - phnbs
+  # - phnbs_sd 
+  # - phnbs_se
+  - phsws
+  # - phsws_sd 
+  # - phsws_se
+  - phtot 
+  # - phtot_sd 
+  # - phtot_se 
+  - sal
+  # - sal_sd 
+  # - sal_se
+  - temp
+  # - temp_sd 
+  # - temp_se 
+  - ta
+  # - ta_sd 
+  # - ta_se
+  - omegaa
+  # - omegaa_sd 
+  # - omegaa_se 
+  - omegac
+  # - omegac_sd 
+  # - omegac_se 
+
+  - dic 
+  # - dic_sd 
+  # - dic_se 
+  - co3
+  # - co3_sd 
+  # - co3_se
+  - hco3
+  # - hco3_sd 
+  # - hco3_se 
+  - do 
+  # - do_sd 
+  # - do_se 
+  - irr
+  # - irr_sd 
+  # - irr_se
+  - n
+  - calcification 
+  - calcification_sd 
+  - calcification_se
+  - calcification_unit
+  # - life_stages 
+  # - methods 
+  - notes
+  - notes+ 
+  - notes++
+  - duration
+
+
+meta_model_factor_variables:
+  - ecoregion
+  - realm
+  - family
+  - genus
+  - species
+  - functional_group
+  - core_grouping
+  - calcification_unit
+  - st_calcification_unit
+
+
+publication_data_columns:
+  - doi
+  - year
+  - genus
+  - species
+  - family
+  - functional_group
+  - core_grouping
+  - location
+  - latitude
+  - longitude
+  - ecoregion
+  - lat_zone
+  - realm
+  - pco2
+  - phtot
+  - ta
+  - irr
+  - temp
+  - sal
+  - n
+  - calcification
+  - calcification_sd
+  - calcification_unit
+  - st_calcification_sd
+  - st_calcification_unit
+  
+
+

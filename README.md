@@ -64,7 +64,8 @@ e. **Forecasted coral cover**
 f. **Emissions associated with RCPs**  
    To provide an alternative reference level for calcification rates, Figure 2 can be plotted against CO$_2$ emissions provided in [10.5194/gmd-13-3571-2020](10.5194/gmd-13-3571-2020)<sup>5</sup>.
 
-## 2. <ins>Organise</ins> the datasets into the correct structure. Please see below for the necessary repository structure:
+## 2. <ins>Organise</ins> the datasets into the correct structure. 
+Please see below for the necessary repository structure:
 
 ```
 calcification_meta_analysis/
@@ -101,31 +102,39 @@ calcification_meta_analysis/
 |
 └── data/
     └── climatology/
-        ├── MEOW/            # (c.) currently empty, populate as detailed above
+        ├── MEOW/            # (c.) populate as detailed above
+            └── _directory_description.md   # gives information about data download
+        ├── _directory_description.md
         ├── coral_cover_ph_scenarios_output_table_site_locations.csv    # (b.)
         ├── coral_cover_sst_scenarios_output_table_site_locations.csv   # (b.)
         ├── ph_scenarios_output_table_site_locations.csv                # (b.)
         ├── sst_scenarios_output_table_site_locations.csv               # (b.)
         └── SUPPLEMENT_DataTables_Meinshausen_6May2020.xlsx             # (f.)
-    ├── UNEP_WCMC/          # (d.) currently empty, populate as detailed above
+    ├── UNEP_WCMC/          # (d.) populate as detailed above
+        └── _directory_description.md   # gives information about data download
+    ├── _directory_description.md        # information about files in the directory
     ├── coral_cover_locs.xlsx           # (e.)
     ├── extracted_bioerosion_data.xlsx  # (a.)
-    └── extracted_bioerosion_data.xlsx # (a.)
+    └── extracted_bioerosion_data.xlsx  # (a.)
 └── notebooks/
-    └── meta-analysis.ipynb
+    └── meta-analysis.ipynb   # runs all processing and plotting code to create paper figures
 └── resources/          # (see below for more details)
+    ├── _directory_description.md   # information about files in the directory
     ├── api_keys.yaml   # currently missing: create and populate with a Google Maps Geoencoder API key 
     ├── gmaps_locations.yaml   # relevant coordinate pairs for sample locations from Google Maps Geoencoder
     ├── locations.csv   # all relevant coordinate pairs for sample locations (csv format)
     ├── locations.yaml  # all relevant coordinate pairs for sample locations (yaml format)
     ├── mapping.yaml    # file containing the cipher for units mapping, spreadsheet columns etc.
     └── species_mapping.yaml   # species information from WoRMS
+    
 ```
 
 ## 3. <ins>Run</ins> the code via `notebooks/meta-analysis.ipynb`!
 
 This optionally generates the plots and saves them to a local directory.
 
+
+---
 
 ### Resources directory
 
@@ -158,11 +167,15 @@ Contains taxonomic mapping information including genus, species, family, and hig
 
 `species_mapping.yaml`
 
-Taxonomic data (genus, species, family, taxa) was assigned based on the reported species binomial via the World Register of Marine Species (WoRMS) ‘AphiaRecordsByName’ API (https://www.marinespecies.org/rest/)
+Contains taxonomic mapping information including genus, species, family, and higher taxa for each organism, based primarily on data retrieved from the World Register of Marine Species (WoRMS) ‘AphiaRecordsByName’ API (https://www.marinespecies.org/rest/). Used to ensure consistent taxonomy assignments throughout the analyses.
+
+---
 
 ### Contact
 
 If you spot something odd or otherwise have any feedback on this codebase, please do get in touch via a [GitHub Issue](https://github.com/orlando-code/NREE_persistence_reef_structures_meta_analysis/issues).
+
+--- 
 
 ## References
 

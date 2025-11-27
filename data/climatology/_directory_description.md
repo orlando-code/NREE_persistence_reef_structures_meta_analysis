@@ -1,0 +1,3 @@
+`coral_cover_ph_scenarios_output_table_site_locations.csv`, `coral_cover_sst_scenarios_output_table_site_locations.csv`, `ph_scenarios_output_table_site_locations.csv`, and `sst_scenarios_output_table_site_locations.csv`
+
+Past and future pH and sea surface temperature conditions from the Coupled Model Intercomparison Project Version 6 (CMIP6) are provided for the sites of interest as `.csv` files in the `data/climatology/` directory in the repository. The conditions relate to the sites for which coral cover was measured and for which which benthic samples were extracted to subject to experimental treatments. 
