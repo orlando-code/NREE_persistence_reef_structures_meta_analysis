@@ -95,7 +95,7 @@ calcification_meta_analysis/
 │   └── units.py           # Unit conversion and standardization
 │
 └── utils/                 # Configuration and utility functions
-    ├── config.py          # Project configuration and path settings
+   ├── config.py          # Project configuration and path settings
     ├── file_ops.py        # File I/O utilities
     ├── r_context_handler.py # R environment management and package imports
     └── utils.py           # General utility functions
@@ -107,20 +107,24 @@ calcification_meta_analysis/
         ├── coral_cover_sst_scenarios_output_table_site_locations.csv   # (b.)
         ├── ph_scenarios_output_table_site_locations.csv                # (b.)
         ├── sst_scenarios_output_table_site_locations.csv               # (b.)
-        └── SUPPLEMENT_DataTables_Meinshausen_6May2020.xlsx             # (f.)
+        ├── SUPPLEMENT_DataTables_Meinshausen_6May2020.xlsx             # (f.)
+        └── directory_description.md
     ├── UNEP_WCMC/          # (d.) currently empty, populate as detailed above
     ├── coral_cover_locs.xlsx           # (e.)
     ├── extracted_bioerosion_data.xlsx  # (a.)
-    └── extracted_bioerosion_data.xlsx # (a.)
+    ├── extracted_bioerosion_data.xlsx  # (a.)
+    └── directory_description.md        # information about files in the directory
 └── notebooks/
-    └── meta-analysis.ipynb
+    └── meta-analysis.ipynb   # runs all processing and plotting code to create paper figures
 └── resources/          # (see below for more details)
     ├── api_keys.yaml   # currently missing: create and populate with a Google Maps Geoencoder API key 
     ├── gmaps_locations.yaml   # relevant coordinate pairs for sample locations from Google Maps Geoencoder
     ├── locations.csv   # all relevant coordinate pairs for sample locations (csv format)
     ├── locations.yaml  # all relevant coordinate pairs for sample locations (yaml format)
     ├── mapping.yaml    # file containing the cipher for units mapping, spreadsheet columns etc.
-    └── species_mapping.yaml   # species information from WoRMS
+    ├── species_mapping.yaml   # species information from WoRMS
+    └── directory_description.md   # information about files in the directory
+    
 ```
 
 ## 3. <ins>Run</ins> the code via `notebooks/meta-analysis.ipynb`!
