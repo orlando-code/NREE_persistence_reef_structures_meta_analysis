@@ -165,7 +165,7 @@ Contains taxonomic mapping information including genus, species, family, and hig
 
 `species_mapping.yaml`
 
-Taxonomic data (genus, species, family, taxa) was assigned based on the reported species binomial via the World Register of Marine Species (WoRMS) ‘AphiaRecordsByName’ API (https://www.marinespecies.org/rest/)
+Contains taxonomic mapping information including genus, species, family, and higher taxa for each organism, based primarily on data retrieved from the World Register of Marine Species (WoRMS) ‘AphiaRecordsByName’ API (https://www.marinespecies.org/rest/). Used to ensure consistent taxonomy assignments throughout the analyses.
 
 ---
 
