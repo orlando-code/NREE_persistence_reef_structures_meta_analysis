@@ -13,10 +13,12 @@ If you're interested in running the analysis yourself, read on!
 
 
 To get started with the analysis, you need to set up a Python environment with the correct dependencies.
-We recommend using **either** Python virtual environments (`venv`) **or** `conda` environments. All required dependencies are specified in `pyproject.toml`.
+We recommend using **either** Python virtual environments (`venv`) **or** `conda` environments. All required dependencies are specified with **exact versions** in `pyproject.toml`, `requirements.txt`, and `environment.yml` to ensure reproducibility of the paper's results.
+
+> **Important**: This repository uses **exact version pinning** (e.g., `pandas == 2.3.3`) to ensure that anyone can reproduce the exact results from the paper. Do not update package versions unless you understand the implications for reproducibility.
 
 #### **Option 1: Using `venv` (standard Python virtual environment)**
-First, make sure you have Python 3.10+ installed:
+First, make sure you have Python 3.11+ installed:
 
 ```bash
 python -m venv .venv
@@ -25,19 +27,46 @@ python -m pip install --upgrade pip
 python -m pip install .    # Installs dependencies from pyproject.toml
 ```
 
+Alternatively, you can use `requirements.txt`:
+```bash
+python -m pip install -r requirements.txt
+```
+
 #### **Option 2: Using `conda`**
-If you prefer `conda` (such as Anaconda or Miniconda):
+If you prefer `conda` (such as Anaconda or Miniconda), you can use the `environment.yml` file:
 
 ```bash
-conda create -n calc_meta python=3.10
+conda env create -f environment.yml
+conda activate calc_meta
+```
+
+Or create a new environment and install via pip:
+```bash
+conda create -n calc_meta python=3.11
 conda activate calc_meta
 pip install .              # Installs dependencies from pyproject.toml
 ```
 
+Or using `requirements.txt`:
+```bash
+conda create -n calc_meta python=3.11
+conda activate calc_meta
+pip install -r requirements.txt
+```
+
 > **Note**
-> - The command `pip install .` reads your `pyproject.toml` and installs all runtime (and optionally dev) dependencies.
-> - If you run into installation issues with packages that need compilation (e.g., `pyarrow`, `scipy`), try installing the relevant dependencies via `conda` first, then run `pip install .` again.
-> - For reproducible builds or pinned versions, edit `pyproject.toml` accordingly.
+> - The command `pip install .` reads your `pyproject.toml` and installs all runtime dependencies with exact versions.
+> - The `requirements.txt` file provides an alternative installation method with the same exact versions.
+> - The `environment.yml` file can be used to recreate the exact `conda` environment used for the analysis.
+> - For development dependencies, use `pip install -e ".[dev]"`.
+> - If you run into installation issues with packages that need compilation (e.g., `rpy2`, `scipy`, `geopandas`), try installing the relevant dependencies via `conda` first, then run `pip install .` again.
+> - **Do not modify version numbers** in dependency files if you want to reproduce the paper's results exactly.
+
+#### **R Dependencies**
+This project uses `rpy2` to interface with R for statistical meta-analysis. The required R packages (`metafor`, `ggplot2`, `dplyr`, `ggstance`) will be automatically installed when first used, but you must have R installed on your system. 
+
+- **Install R**: Download from [https://www.r-project.org/](https://www.r-project.org/) or install via conda: `conda install -c conda-forge r-base`
+- The R packages will be automatically installed from CRAN when first needed by the analysis code.
 
 You're now ready to proceed with data download and organisation!
 
