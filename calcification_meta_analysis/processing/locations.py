@@ -35,12 +35,18 @@ def get_google_maps_coordinates(locations: list) -> dict:
         if v is None or (isinstance(v, (list, tuple)) and any(x is None for x in v)):
             missing.add(loc)
     if not missing:
-        logger.info(f"Using cached locations in {yaml_path}")
+        logger.info(f"Using cached locations in {'/'.join(yaml_path.parts[-3:])}")
         return gmaps_coords
     logger.info(f"Fetching {len(missing)} new locations from Google Maps API.")
-    api_key = file_ops.read_yaml(config.resources_dir / "api_keys.yaml")[
-        "google_maps_api"
-    ]
+    try:
+        api_key = file_ops.read_yaml(config.resources_dir / "api_keys.yaml")[
+            "google_maps_api"
+        ]
+    except Exception as e:
+        logger.error(
+            f"Error reading API key: {e}. Have you populated the api_keys.yaml file?"
+        )
+        return gmaps_coords
     gmaps_client = googlemaps.Client(key=api_key)
     for loc in tqdm(missing, desc="Querying Google Maps for coordinates"):
         gmaps_coords[loc] = tuple(
@@ -49,7 +55,9 @@ def get_google_maps_coordinates(locations: list) -> dict:
     file_ops.append_to_yaml(
         {k: v for k, v in gmaps_coords.items() if k in missing}, yaml_path
     )
-    logger.info(f"Saved {len(missing)} new locations to {yaml_path}")
+    logger.info(
+        f"Saved {len(missing)} new locations to {'/'.join(yaml_path.parts[-3:])}"
+    )
     return gmaps_coords
 
 
