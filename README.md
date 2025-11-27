@@ -111,7 +111,7 @@ calcification_meta_analysis/
         ├── sst_scenarios_output_table_site_locations.csv               # (b.)
         └── SUPPLEMENT_DataTables_Meinshausen_6May2020.xlsx             # (f.)
     ├── UNEP_WCMC/          # (d.) populate as detailed above
-         └── _directory_description.md   # gives information about data download
+        └── _directory_description.md   # gives information about data download
     ├── _directory_description.md        # information about files in the directory
     ├── coral_cover_locs.xlsx           # (e.)
     ├── extracted_bioerosion_data.xlsx  # (a.)
