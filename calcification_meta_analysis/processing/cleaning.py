@@ -36,6 +36,21 @@ def fill_metadata(df: pd.DataFrame) -> pd.DataFrame:
     """Fill metadata columns forward."""
     meta_cols = ["doi", "year", "authors", "location", "species_types", "taxa"]
     missing = [col for col in meta_cols if col not in df.columns]
+    # flag any rows which have a doi but not authors
+    df["doi_without_authors"] = df.apply(
+        lambda row: row["doi"]
+        if pd.isna(row["authors"]) and not pd.isna(row["doi"])
+        else np.nan,
+        axis=1,
+    )  # N.B. for highlighted processing this gets all the dois
+    if not df["doi_without_authors"].isna().all():
+        dois_without_authors = (
+            df["doi_without_authors"][~df["doi_without_authors"].isna()]
+            .unique()
+            .tolist()
+        )
+        if dois_without_authors:
+            logger.warning(f"DOIs without authors: {dois_without_authors}")
     if missing:
         logger.warning(f"Missing metadata columns: {missing}")
     present_cols = [col for col in meta_cols if col in df.columns]
