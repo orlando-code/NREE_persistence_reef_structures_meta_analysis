@@ -14,5 +14,5 @@ data/
 # ignoring local versions of resources/outputs
 resources/
 figures/
-.png
+*.png
 *.jpg
