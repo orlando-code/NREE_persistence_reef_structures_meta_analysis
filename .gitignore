@@ -4,17 +4,15 @@ __pycache__/
 .vscode/
 *.egg-info/
 
-# ignore private data
+# ignoring private data (held locally)
 api_keys.yaml
-# ignore datasets (may change in future)
+# ignoring local versions of datasets
+data/
 *.xlsx
-
-# hiding data for now
 *.csv
 
-# ignoring resources dir for now
+# ignoring local versions of resources/outputs
 resources/
 figures/
 .png
 *.jpg
-data/
