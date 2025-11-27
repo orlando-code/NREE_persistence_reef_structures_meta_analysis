@@ -64,7 +64,8 @@ e. **Forecasted coral cover**
 f. **Emissions associated with RCPs**  
    To provide an alternative reference level for calcification rates, Figure 2 can be plotted against CO$_2$ emissions provided in [10.5194/gmd-13-3571-2020](10.5194/gmd-13-3571-2020)<sup>5</sup>.
 
-## 2. <ins>Organise</ins> the datasets into the correct structure. Please see below for the necessary repository structure:
+## 2. <ins>Organise</ins> the datasets into the correct structure. 
+Please see below for the necessary repository structure:
 
 ```
 calcification_meta_analysis/
