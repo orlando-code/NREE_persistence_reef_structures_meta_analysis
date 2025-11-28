@@ -16,3 +16,6 @@ resources/
 figures/
 *.png
 *.jpg
+
+# virtual environments
+venv/
