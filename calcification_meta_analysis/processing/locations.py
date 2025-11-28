@@ -142,6 +142,7 @@ def assign_ecoregions(df: pd.DataFrame) -> pd.DataFrame:
         logger.error(
             f"Error reading ecoregions shapefile: {e}. Either you haven't downloaded the MEOW ecoregion data, or it is in the wrong place. Proceeding without ecoregion information."
         )
+        return df
     df = gpd.GeoDataFrame(df, geometry="geometry", crs=4326)
     df["geometry"] = gpd.points_from_xy(df["longitude"], df["latitude"])
     df = gpd.sjoin(
