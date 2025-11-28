@@ -1,6 +1,7 @@
 # general
+import logging
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -11,14 +12,6 @@ import seaborn as sns
 from matplotlib.colorbar import ColorbarBase
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.lines import Line2D
-
-# stats
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import (
-    RBF,
-    ConstantKernel,
-    WhiteKernel,
-)
 
 # custom
 from calcification_meta_analysis.analysis import (
@@ -36,12 +29,14 @@ from calcification_meta_analysis.utils import config, r_context_handler
 metafor_r = r_context_handler.safe_import_r_package("metafor")
 grdevices_r = r_context_handler.safe_import_r_package("grDevices")
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class MetaRegressionConfig:
     color: str = "#1f77b4"
     ci_color: str = "#aec7e8"
-    figsize: Tuple[int, int] = (6, 10)
+    figsize: tuple[int, int] = (6, 10)
     dpi: int = 150
     title: str = None
     xlabel: str = "Predictor"
@@ -717,25 +712,25 @@ def plot_funnel_from_model(
 
     Parameters
     ----------
-    model : rpy2.robjects.vectors.ListVector
+    model : rpy2.robjects.vectors.listVector
         A fitted metafor model object (from rma, rma.uni, etc.)
     main : str,
         Main title for the plot
     effect_type : str,
         Label for x-axis
-    shade_colors : List[str],
+    shade_colors : list[str],
         Colors for confidence contours (from innermost to outermost)
     back_color : str,
         Background color for the plot
-    level : List[float],
+    level : list[float],
         Confidence levels for contours
     legend : bool,
         Whether to include a legend
-    hlines : List[float],
+    hlines : list[float],
         Y-positions for horizontal reference lines
     yaxis : str,
         Y-axis scale ('se', 'vi', 'seinv', 'vinv')
-    digits : List[int],
+    digits : list[int],
         Number of digits for axis values
     las : int,
         Orientation of axis labels (0-3)
@@ -752,7 +747,7 @@ def plot_funnel_from_model(
 
     Returns
     -------
-    None or Tuple[plt.Figure, plt.Axes]
+    None or tuple[plt.Figure, plt.Axes]
         If plot_in_python=True, returns the matplotlib figure and axes
 
     Notes
@@ -886,69 +881,6 @@ def plot_contour(ax, x, y, df, title, legend_label="Calcification Rate"):
     ax.set_ylabel("pH$_T$")
     ax.set_title(title)
     plt.colorbar(contour, label=legend_label)
-
-
-def plot_contour_gp(
-    ax: matplotlib.axes.Axes,
-    x: np.ndarray,
-    y: np.ndarray,
-    df: pd.DataFrame,
-    title: str,
-    legend_label: str = "Calcification Rate",
-) -> None:
-    """
-    Create a smooth contour plot using Gaussian Process regression
-
-    Args:
-        ax (matplotlib.axes.Axes): The axes to plot on
-        x (np.ndarray): The x-coordinates for the grid
-        y (np.ndarray): The y-coordinates for the grid
-        df (pd.DataFrame): DataFrame containing 'temp', 'phtot', and 'st_calcification' columns
-        title (str): The title for the plot
-        legend_label (str, optional): The label for the colorbar
-    """
-    X_train = df[["temp", "phtot"]].values
-    y_train = df["st_calcification"].values
-
-    # define the kernel - variable-independent RBFs with noise
-    k1 = ConstantKernel(1.0) * RBF(
-        length_scale=2.5, length_scale_bounds=(0.1, 10.0)
-    )  # for temperature
-    k2 = ConstantKernel(1.0) * RBF(
-        length_scale=0.1, length_scale_bounds=(0.01, 0.5)
-    )  # for pH
-    kernel = k1 + k2 + WhiteKernel(noise_level=0.1)
-
-    # fit GP
-    gp = GaussianProcessRegressor(
-        kernel=kernel,
-        n_restarts_optimizer=10,
-        alpha=np.asarray(df["st_calcification_sd"]) ** 2,
-    )
-    gp.fit(X_train, y_train)
-
-    # create prediction grid and predict
-    X, Y = np.meshgrid(x, y)
-    grid_points = np.column_stack([X.ravel(), Y.ravel()])
-    Z = gp.predict(grid_points).reshape(X.shape)
-
-    # plot the contour
-    contour = ax.contourf(X, Y, Z, levels=20, cmap="viridis")
-    ax.set_xlabel("Temperature ($^\\circ C$)")
-    ax.set_ylabel("pH$_T$")
-    ax.set_title(title)
-    ax.scatter(
-        df["temp"],
-        df["phtot"],
-        c="white",
-        s=10,
-        alpha=0.6,
-        edgecolors="black",
-        linewidths=0.5,
-    )
-
-    # format
-    plt.colorbar(contour, ax=ax, label=legend_label)
 
 
 def plot_global_timeseries_grid(
@@ -1397,23 +1329,21 @@ def prepare_emissions_predictions(
 
 
 # --- Burning Embers figures ---
-
-
 @dataclass
 class BurningEmbersConfig:
-    insufficient_data_cols: Optional[List[str]] = None
-    cmap_colors: Optional[List[str]] = None
+    insufficient_data_cols: Optional[list[str]] = None
+    cmap_colors: Optional[list[str]] = None
     vmin: float = -75  # Changed from 0 to -75
     vmax: float = 0  # Changed from -75 to 0
     n_levels: int = 100
-    figsize: Tuple[int, int] = (14, 6)
+    figsize: tuple[int, int] = (14, 6)
     dpi: int = 300
     end_year: int = 2100
     title: str = f"Projected impacts of climate change on reef calcifiers in {end_year}"
     forcing_col: str = "anomaly_value_sst"
     ssp_axs: bool = True
     emissions_scenario: str = "ssp585"
-    category_order: Optional[List[str]] = (
+    category_order: Optional[list[str]] = (
         None  # Order for plotting categories (can include insufficient data category position)
     )
     se_dots: bool = False
@@ -1435,7 +1365,7 @@ class BurningEmbersPlotter:
         """
         Args:
             config: Optional[BurningEmbersConfig] = None. Configuration object that can include:
-                - category_order: Optional[List[str]] = None. Specifies the order in which categories
+                - category_order: Optional[list[str]] = None. Specifies the order in which categories
                   should be plotted from left to right. Can include both regular category names and
                   the insufficient data category name (e.g., "Foraminifera/Molluscs etc.").
                   If not provided, categories will be plotted in their default order.
@@ -2261,11 +2191,17 @@ class BurningEmbersPlotter:
             scenario_name.replace(" ", "")
             for scenario_name in list(plot_config.SCENARIO_MAP.values())
         ]
-        emissions_data = climatology_processing.get_emissions_data_from_file(
-            config.climatology_data_dir
-            / "SUPPLEMENT_DataTables_Meinshausen_6May2020.xlsx",
-            scenario_names,
-        )
+        try:
+            emissions_data = climatology_processing.get_emissions_data_from_file(
+                config.climatology_data_dir
+                / "SUPPLEMENT_DataTables_Meinshausen_6May2020.xlsx",
+                scenario_names,
+            )
+        except Exception as e:
+            logger.error(
+                f"Error getting emissions data: {e}. Proceeding without emissions data."
+            )
+            return predictions_grid_df
         # merge with predictions
         merged = pd.merge(
             predictions_grid_df,
