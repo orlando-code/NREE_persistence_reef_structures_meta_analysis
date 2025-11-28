@@ -25,10 +25,11 @@ def populate_carbonate_chemistry(fp: str, sheet_name: str = "all_data") -> pd.Da
     df = cleaning.process_raw_data(
         pd.read_excel(fp, sheet_name=sheet_name),
         require_results=True,
+        verbose=False,
     )
     logger.info("Loading measured values...")
     measured_df = file_ops.get_highlighted(fp, sheet_name=sheet_name)
-    measured_df = cleaning.preprocess_df(measured_df)
+    measured_df = cleaning.preprocess_df(measured_df, verbose=False)
     measured_df = _convert_ph_scales(measured_df)
     measured_df = _calculate_missing_phtot(measured_df)
 

@@ -32,7 +32,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def fill_metadata(df: pd.DataFrame) -> pd.DataFrame:
+def fill_metadata(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """Fill metadata columns forward."""
     meta_cols = ["doi", "year", "authors", "location", "species_types", "taxa"]
     missing = [col for col in meta_cols if col not in df.columns]
@@ -50,9 +50,11 @@ def fill_metadata(df: pd.DataFrame) -> pd.DataFrame:
             .tolist()
         )
         if dois_without_authors:
-            logger.warning(f"DOIs without authors: {dois_without_authors}")
+            if verbose:
+                logger.warning(f"DOIs without authors: {dois_without_authors}")
     if missing:
-        logger.warning(f"Missing metadata columns: {missing}")
+        if verbose:
+            logger.warning(f"Missing metadata columns: {missing}")
     present_cols = [col for col in meta_cols if col in df.columns]
     if present_cols:
         df[present_cols] = df[present_cols].infer_objects(copy=False).ffill()
@@ -62,9 +64,10 @@ def fill_metadata(df: pd.DataFrame) -> pd.DataFrame:
         include_df.groupby("doi")["authors"].nunique().loc[lambda x: x > 1]
     )
     if not dois_with_different_author_fields.empty:
-        logger.warning(
-            f"DOIs with different author fields: {dois_with_different_author_fields.index.tolist()}"
-        )
+        if verbose:
+            logger.warning(
+                f"DOIs with different author fields: {dois_with_different_author_fields.index.tolist()}"
+            )
     # check that the location column doesn't change within a DOI
     if "location" in df.columns:
         df["location"] = df.groupby("doi")["location"].ffill()
@@ -235,11 +238,11 @@ def round_ns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def preprocess_df(df: pd.DataFrame) -> pd.DataFrame:
+def preprocess_df(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """Clean dataframe fields and standardise for future processing."""
     try:
         df = normalize_columns(df)
-        df = fill_metadata(df)
+        df = fill_metadata(df, verbose=verbose)
         df = convert_types(df)
         df = remove_unnamed_columns(df)
         df = replace_empty_cells_with_nan(df)
@@ -253,10 +256,11 @@ def preprocess_df(df: pd.DataFrame) -> pd.DataFrame:
 def process_raw_data(
     df: pd.DataFrame,
     require_results: bool = True,
+    verbose: bool = True,
 ) -> pd.DataFrame:
     """Process raw data from the spreadsheet to prepare for analysis."""
     try:
-        df = preprocess_df(df)
+        df = preprocess_df(df, verbose=verbose)
         df = locations.assign_coordinates(df)
         df = locations.uniquify_multilocation_study_dois(df)
         locations.save_locations_information(df)
