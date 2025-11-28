@@ -19,3 +19,4 @@ figures/
 
 # virtual environments
 venv/
+.venv/
