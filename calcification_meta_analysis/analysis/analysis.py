@@ -1,5 +1,4 @@
 # general
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -91,7 +90,7 @@ def calc_absolute_rate(
     Args:
         mu1, mu2 (float):   Mean values to compare (mu1=reference/baseline, mu2=new value)
         sd1, sd2 (float, optional):   Standard deviations of mu1 and mu2
-        n1, n2 (int): number of samples in group 1 (control) and group 2 (treatment)
+        n1, n2 (int, optional): number of samples in group 1 (control) and group 2 (treatment)
 
     Returns:
         tuple: absolute difference between means, standard error of the difference
@@ -599,26 +598,6 @@ def summarise_group(
     return pd.DataFrame(rows)
 
 
-def label_study_data(axis: plt.axis, row: pd.Series, x_value: float = -200) -> None:
-    """Label the study data on the axis.
-
-    Args:
-        axis: The axis to label the study data on.
-        row: The row of the dataframe containing the study data.
-        x_value: The x-value to label the study data on.
-    """
-    axis.text(
-        x_value,
-        row["group"],
-        f"Trials: {int(row['n_trials'])}\nStudies: {int(row['n_studies'])}",
-        va="center",
-        ha="left",
-        fontsize=8,
-        color="black",
-        bbox=dict(facecolor="white", alpha=0.7, edgecolor="none"),
-    )
-
-
 class HandlerStars(HandlerBase):
     def create_artists(
         self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans
@@ -651,7 +630,7 @@ def construct_predicted_response_surfaces(
     effect_type: str,
     model_formula: str = "delta_t + delta_ph - 1",
     surface_resolution: int = 1000,
-    cooks_distance_type: bool = None,
+    cooks_distance_type: str = None,
 ):
     """
     For each core_grouping in the data, fit model and generate predicted response surfaces sampled over observed/future climatologies (global_anomaly_df).
@@ -661,7 +640,7 @@ def construct_predicted_response_surfaces(
         global_anomaly_df (pd.DataFrame): DataFrame of global climatology anomalies
         effect_type (str): Effect type to fit models with
         surface_resolution (int): Resolution of the response surface
-
+        cooks_distance_type (str): Type of cooks distance to use. Options are 'native', 'OLS', or None.
     Returns:
         response_df: DataFrame of response predictions for each scenario/row in global_anomaly_df (tiled for each core_grouping)
         heterogeneity_df: DataFrame with model heterogeneity stats for each core_grouping

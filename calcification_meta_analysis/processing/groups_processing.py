@@ -345,17 +345,8 @@ def assign_treatment_groups_multilevel(
     return result_df
 
 
-def assign_delta_t_category(delta_t: float | int) -> str:
-    """
-    Assign a category based on the value of delta_t.
-    """
-    bins = [-float("inf"), 0.5, 1.5, 2.5, float("inf")]
-    labels = ["No change", "Low", "Medium", "High"]
-    return pd.cut([delta_t], bins=bins, labels=labels)[0]
-
-
 def group_irradiance(
-    df: pd.DataFrame, irr_col: float = "irr", atol: float = 30
+    df: pd.DataFrame, irr_col: str = "irr", atol: float = 30
 ) -> pd.DataFrame:
     """
     Assigns an 'irr_group' to values that are within absolute tolerance.

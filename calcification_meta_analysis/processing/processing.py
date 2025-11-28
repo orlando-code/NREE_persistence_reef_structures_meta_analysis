@@ -11,62 +11,6 @@ from calcification_meta_analysis.utils import config, file_ops, utils
 
 
 ### helper functions
-def aggregate_df(df: pd.DataFrame, method: str = "mean") -> pd.DataFrame:
-    """Aggregate DataFrame by specified method (mean, median, etc.)"""
-    aggregation_funcs = {
-        col: method if pd.api.types.is_numeric_dtype(df[col]) else lambda x: x.iloc[0]
-        for col in df.columns
-    }  # define aggregation functions for each column
-    return df.agg(aggregation_funcs)  # aggregate DataFrame
-
-
-def assign_delta_t_category(delta_t: float | int) -> str:
-    """
-    Assign a category based on the value of delta_t.
-    """
-    bins = [-float("inf"), 0.5, 1.5, 2.5, float("inf")]
-    labels = ["No change", "Low", "Medium", "High"]
-    return pd.cut([delta_t], bins=bins, labels=labels)[0]
-
-
-def group_irradiance(
-    df: pd.DataFrame, irr_col: float = "irr", atol: float = 30
-) -> pd.DataFrame:
-    """
-    Assigns an 'irr_group' to values that are within absolute tolerance.
-
-    Args:
-        df (pd.DataFrame): Input dataframe with an 'irr' column.
-        irr_col (str): Column name for irradiance values.
-        atol (float): Absolute tolerance for grouping.
-
-    Returns:
-        pd.DataFrame: Dataframe with new 'irr_group' column.
-    """
-    df = df.copy()  # avoid overwriting
-    irr_values = df[irr_col].to_numpy(dtype=float)  # to apply mask
-    irr_groups = np.full(len(df), -1)  # set default group (for nan values)
-
-    # get indices of non-NaN values and sort them by irradiance value
-    valid_idx = np.where(~np.isnan(irr_values))[0]
-    sorted_idx = valid_idx[np.argsort(irr_values[valid_idx])]
-
-    # assign groups to valid values
-    if len(sorted_idx) > 0:  # continue if there are valid values
-        group_id = 0
-        prev_irr = irr_values[sorted_idx[0]]
-        irr_groups[sorted_idx[0]] = group_id
-
-        for i in sorted_idx[1:]:
-            if np.abs(irr_values[i] - prev_irr) > atol:
-                group_id += 1
-            irr_groups[i] = group_id
-            prev_irr = irr_values[i]
-
-    df["irr_group"] = irr_groups
-    return df
-
-
 def cluster_values(values: list, tolerance: float) -> list:
     """
     Cluster values based on their proximity.
