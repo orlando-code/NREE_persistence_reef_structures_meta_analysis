@@ -134,11 +134,16 @@ def assign_ecoregions(df: pd.DataFrame) -> pd.DataFrame:
     """Assign ecoregions to locations based intersections of points with ecoregion polygons."""
     # copy df
     df = df.copy()
-    ecoregions_gdf = gpd.read_file(
-        config.climatology_data_dir / "MEOW/meow_ecos.shp"
-    ).to_crs(epsg=4326)
-    df["geometry"] = gpd.points_from_xy(df["longitude"], df["latitude"])
     df = gpd.GeoDataFrame(df, geometry="geometry", crs=4326)
+    try:
+        ecoregions_gdf = gpd.read_file(
+            config.climatology_data_dir / "MEOW/meow_ecos.shp"
+        ).to_crs(epsg=4326)
+    except Exception as e:
+        logger.error(
+            f"Error reading ecoregions shapefile: {e}. Either you haven't downloaded the MEOW ecoregion data, or it is in the wrong place. Proceeding without ecoregion information."
+        )
+    df["geometry"] = gpd.points_from_xy(df["longitude"], df["latitude"])
     df = gpd.sjoin(
         df,
         ecoregions_gdf[["geometry", "ECOREGION", "REALM", "Lat_Zone"]],
