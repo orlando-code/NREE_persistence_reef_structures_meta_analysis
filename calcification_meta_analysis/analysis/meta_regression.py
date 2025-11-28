@@ -78,6 +78,7 @@ class MetaforModel:
         return self.processed_df
 
     def _get_formula_components(self) -> dict:
+        """Get the formula components for the model."""
         formula_components = analysis_utils.get_formula_components(self.formula)
         self.intercept = formula_components["intercept"]
         return formula_components
@@ -153,13 +154,13 @@ def predict_curve(
     """
     Predict values using the fitted model with confidence intervals.
 
-    Parameters:
-    - model: The fitted regression model.
-    - x (np.ndarray): The independent variable values.
-    - alpha (float): Significance level for confidence intervals (default: 0.05 for 95% CI)
+    Args:
+        model: The fitted regression model.
+        x (np.ndarray): The independent variable values.
+        alpha (float): Significance level for confidence intervals (default: 0.05 for 95% CI)
 
     Returns:
-    - tuple: (predicted values, lower confidence bound, upper confidence bound)
+        tuple: (predicted values, lower confidence bound, upper confidence bound)
     """
     X = np.vander(x, N=model.params.shape[0], increasing=True)
     prediction = model.get_prediction(X)
@@ -174,7 +175,7 @@ def predict_curve(
 
 
 # --- Meta-analysis ---
-def _extract_model_components(
+def extract_model_components(
     model: ro.vectors.ListVector, moderator_names: str | list[str]
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Extract xi (moderator values), yi (effect sizes), vi (variance) from the model, and mask out missing values."""
@@ -224,9 +225,10 @@ def get_xs_and_prediction_limits(
     num_prediction_points: int = 1000,
 ) -> tuple[np.ndarray, tuple[float, float]]:
     """Compute xs (x values for regression line) and prediction_limits (min and max x values) if not provided.
-    xi: np.ndarray of shape (n_points, n_moderators)
-    prediction_limits: tuple of (min, max) x values for prediction
-    num_prediction_points: number of points to predict on
+
+    Args:
+        xi: np.ndarray of shape (n_points, n_moderators)
+        num_prediction_points (int): number of points on which to predict
 
     Returns:
         xs: np.ndarray of shape (n_points, n_moderators)
@@ -315,10 +317,7 @@ def metafor_predict_from_model(
     Xnew = _build_newmods_matrix(model, moderator_names, xs, npoints=npoints)
     # convert to R matrix
     Xnew_r = ro.r.matrix(ro.FloatVector(Xnew.flatten()), nrow=Xnew.shape[0], byrow=True)
-    # fit model on everything
-    # predict on everything else but with the main moderator set to zero
-    # subtract from actual datapoints
-    # predict
+
     return get_metafor_prediction_from_model(model, Xnew_r, confidence_level)
 
 
@@ -327,6 +326,7 @@ def get_metafor_prediction_from_model(
     Xnew: np.ndarray,
     confidence_level: int = 95,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Get the prediction from the model."""
     predict_res = ro.r("predict")(model, newmods=Xnew, level=(confidence_level / 100))
     pred = np.array(predict_res.rx2("pred"))
     se = np.array(predict_res.rx2("se"))
@@ -375,6 +375,7 @@ def prediction_df_from_model(
     confidence_level: int = 95,
     npoints: int = 1000,
 ) -> pd.DataFrame:
+    """Get the prediction dataframe from the model."""
     pred, se, ci_lb, ci_ub, pred_lb, pred_ub = metafor_predict_from_model(
         model, moderator_names, xs, confidence_level, npoints
     )
@@ -484,7 +485,7 @@ def generate_interactive_moderator_value(
 class DredgeConfig:
     """Configuration for dredge analysis.
 
-    N.B. provide global_formula as e.g.
+    N.B. provide global_formula as e.g. "delta_t + delta_ph - 1"
     """
 
     def __init__(
@@ -572,14 +573,11 @@ class DredgeAnalysis:
         """Set up R environment variables for dredge analysis."""
         os.environ["LC_ALL"] = "en_US.UTF-8"
 
-        # Convert DataFrame to R and assign variables
+        # convert DataFrame to R and assign variables
         from rpy2.robjects import pandas2ri
 
         with (ro.default_converter + pandas2ri.converter).context():
             ro.r.assign("df_r", pandas2ri.py2rpy(self.df))
-        # df_r = pandas2ri.py2rpy(self.df)
-        # df_r = ro.pandas2ri.py2rpy(self.df)
-        # ro.r.assign("df_r", df_r)
         ro.r.assign("effect_col", self.config.effect_type)
         ro.r.assign("var_col", f"{self.config.effect_type}_var")
         ro.r.assign("original_doi", "original_doi")
@@ -765,6 +763,7 @@ class DredgeAnalysis:
 def generate_location_specific_predictions(
     model, df: pd.DataFrame, scenario_var: str = "sst", moderator_pos: int = None
 ) -> list[dict]:
+    """Generate location-specific predictions from the model."""
     # TODO: make this more general
     # get constant terms from the model matrix (excluding intercept/first column)
     model_matrix = ro.r("model.matrix")(model)

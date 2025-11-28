@@ -562,7 +562,7 @@ class MetaRegressionResults:
         )
 
     def _get_basic_model_data_for_moderator(self):
-        self.xi, self.yi, self.vi = meta_regression._extract_model_components(
+        self.xi, self.yi, self.vi = meta_regression.extract_model_components(
             self.model,
             self.moderator_names,
             # if isinstance(self.moderator_names, list)
