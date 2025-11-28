@@ -2199,7 +2199,7 @@ class BurningEmbersPlotter:
             )
         except Exception as e:
             logger.error(
-                f"Error getting emissions data: {e}. Proceeding without emissions data."
+                f"Error getting emissions data: {e}. Have you downloaded it? Proceeding without."
             )
             return predictions_grid_df
         # merge with predictions
