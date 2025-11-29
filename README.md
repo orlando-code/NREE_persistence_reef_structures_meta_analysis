@@ -42,14 +42,14 @@ conda activate calc_meta
 
 Or create a new environment and install via pip:
 ```bash
-conda create -n calc_meta python=3.11
+conda create -n calc_meta
 conda activate calc_meta
 pip install .              # Installs dependencies from pyproject.toml
 ```
 
 Or using `requirements.txt`:
 ```bash
-conda create -n calc_meta python=3.11
+conda create -n calc_meta
 conda activate calc_meta
 pip install -r requirements.txt
 ```
