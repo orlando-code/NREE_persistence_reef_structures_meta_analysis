@@ -97,7 +97,6 @@ dev.off()
 # -------------
 # FIGURE S7 – Cook's distance analysis: excluding extreme effect sizes/variances
 # -------------
-
 cooks_filter_results <- influence_filtering(final_dat, mods_formula, cg_random_structure, plot = TRUE)
 png(file.path(paper_conf_root, "figures", "FIG_S7.jpg"), width = 8, height = 8, units = "in", res = 300)
 print(plot_coefficient_comparison(cooks_filter_results$results))
@@ -124,7 +123,7 @@ print("Egger's regression test with moderators:")
 print(egger_test_mods_result)
 
 # funnel plot
-png(file.path(paper_conf_root, "figures", "FIG_S8.jpg"), width = 8, height = 8, units = "in", res = 300)
+png(file.path(paper_conf_root, "figures", "FIG_S8.jpg"), width = 10, height = 10, units = "in", res = 300)
 funnel(final_dat$yi, final_dat$vi,
   shade = c("white", "gray55", "gray75"),
   yaxs = "i", xaxs = "i",
