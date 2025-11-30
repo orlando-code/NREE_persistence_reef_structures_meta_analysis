@@ -18,7 +18,7 @@ def save_fig(
     unique_id: bool = False,
     file_extension: str = "jpg",
 ) -> None:
-    print("Saving figure to", config.fig_dir)
+    print("Saving figure to", "/".join(config.fig_dir.parts[-3:]))
     config.fig_dir.mkdir(parents=True, exist_ok=True)
     if unique_id:
         run_key = (
