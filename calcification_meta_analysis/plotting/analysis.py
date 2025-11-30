@@ -643,9 +643,12 @@ def plot_model_surface_2d(
         vmin=-abs_max,
         vmax=abs_max,
     )
+    # have top left as smallest values
+    ax.invert_yaxis()
+    ax.invert_xaxis()
     # format
-    ax.set_xlabel(moderator_names[0])
-    ax.set_ylabel(moderator_names[1])
+    ax.set_xlabel(plot_config.TREATMENT_LABELS[moderator_names[0]])
+    ax.set_ylabel(plot_config.TREATMENT_LABELS[moderator_names[1]])
     cbar = plt.colorbar(
         contour_ax,
         orientation="horizontal",
@@ -1522,6 +1525,7 @@ class BurningEmbersPlotter:
         """Calculate actual x-positions for categories, accounting for bioerosion shift."""
         positions = {}
         current_position = 0
+        gap_after_cca = 1  # gap size between CCA and Coral bar centers to allow for exponential plot
 
         for i, category in enumerate(final_categories):
             # Check if this is the bioerosion category and shift is enabled
@@ -1534,6 +1538,12 @@ class BurningEmbersPlotter:
 
             positions[category] = current_position
             current_position += 1
+
+            # Add gap after CCA (before Coral)
+            if category == "CCA" and i < len(final_categories) - 1:
+                # Check if next category is Coral
+                if final_categories[i + 1] == "Coral":
+                    current_position += gap_after_cca
 
         return positions
 
@@ -1592,6 +1602,9 @@ class BurningEmbersPlotter:
             if self.config.vmax is not None
             else max(self.pred_lims),
         )
+
+        # Store category_positions as instance variable for use in other methods
+        self.category_positions = category_positions
 
         # Draw separator line if bioerosion shift is enabled
         if self.config.shift_bioerosion and self.config.add_separator_line:
