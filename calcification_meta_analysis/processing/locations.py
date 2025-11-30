@@ -138,9 +138,9 @@ def assign_ecoregions(df: pd.DataFrame) -> pd.DataFrame:
         ecoregions_gdf = gpd.read_file(
             config.climatology_data_dir / "MEOW/meow_ecos.shp"
         ).to_crs(epsg=4326)
-    except Exception as e:
+    except Exception:
         logger.error(
-            f"Error reading ecoregions shapefile: {e}. Either you haven't downloaded the MEOW ecoregion data, or it is in the wrong place. Proceeding without ecoregion information."
+            "Error reading ecoregions shapefile. Either you haven't downloaded the MEOW ecoregion data, or it is in the wrong place. Proceeding without ecoregion information."
         )
         return df
     df["geometry"] = gpd.points_from_xy(df["longitude"], df["latitude"])
