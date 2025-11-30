@@ -172,7 +172,7 @@ def site_distribution_spatial_plot(
     # plot reefs in the background
     all_reefs.plot(ax=ax, color="sandybrown", alpha=0.5, linewidth=0, zorder=-5)
 
-    # plot outlines oftropical realms
+    # plot outlines of tropical realms
     for idx, row in tropical_realms.iterrows():
         geom = row.geometry
         if isinstance(geom, Polygon):
@@ -307,6 +307,7 @@ def site_distribution_spatial_plot(
             edgecolor=color,
             linewidth=2,
             label=realm,
+            alpha=0.5,
         )
         realm_patches.append(patch)
 
