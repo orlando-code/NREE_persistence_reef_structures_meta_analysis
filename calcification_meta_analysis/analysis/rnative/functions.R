@@ -442,6 +442,43 @@ clim_filtering <- function(dat,
 
 
 #' Cook's distance influence filter
+#' @param dat Data frame containing meta-analysis data
+#' @param mods_formula Model formula for fixed effects
+#' @param random_structure Random effects structure
+#' @param grouping_var Grouping variable
+#' @param plot Logical. If TRUE, plots the results
+influence_filtering <- function(dat,
+                                mods_formula = NULL,
+                                random_structure,
+                                grouping_var = "core_grouping",
+                                plot = TRUE) {
+    filters <- list()
+    filters[["cooks_distance"]] <- function(group_data, group_name, baseline_model, mods_formula, random_structure) {
+        cooks_distance_filter(group_data, group_name, baseline_model, mods_formula, random_structure)
+    }
+
+    # Create plotting function with rescale_coefficients parameter
+    plot_func <- if (plot) {
+        function(sens_results) {
+            plot_coefficient_comparison(sens_results)
+        }
+    } else {
+        NULL
+    }
+
+    return(sensitivity_analysis_framework(
+        dat = dat,
+        mods_formula = mods_formula,
+        random_structure = random_structure,
+        filters = filters,
+        grouping_var = grouping_var,
+        plot = plot,
+        plot_func = plot_func
+    ))
+}
+
+
+#' Cook's distance influence filter
 #' @param group_data Data frame containing meta-analysis data for a specific group
 #' @param group_name Name of the group
 #' @param baseline_model Fitted rma.mv model for the baseline model
