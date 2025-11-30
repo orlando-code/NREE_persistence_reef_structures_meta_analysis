@@ -34,6 +34,11 @@ TREATMENT_MAPPING = {
     "temp_phtot": "pH & Temperature",
 }
 
+TREATMENT_LABELS = {
+    "delta_ph": r"$\Delta pH$",
+    "delta_t": r"$\Delta T$",
+}
+
 TREATMENT_COLOURS = {
     "phtot": "#81baf0",
     "temp": "#F15B4E",
