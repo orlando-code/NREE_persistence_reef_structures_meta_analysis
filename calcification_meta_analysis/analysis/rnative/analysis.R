@@ -38,10 +38,10 @@ dat$dt <- dat$delta_t
 dat$dph <- dat$delta_ph
 
 # remove extreme climatology corresponding to 10th and 90th percentiles at 2100 under SSP5-8.5
-max_dt <- 4.72441259980685
-min_dt <- -0.8614701435947981
-max_ph <- 0.01746382577336627
-min_ph <- -0.44508431504041956
+max_dt <- 4.71518004416422
+min_dt <- -0.8509536893003847
+max_ph <- 0.017361047261669333
+min_ph <- -0.4439020009266399
 clim_dat <- dat[(dat$dt > min_dt) & (dat$dt < max_dt) &
   (dat$dph > min_ph) & (dat$dph < max_ph), ]
 
