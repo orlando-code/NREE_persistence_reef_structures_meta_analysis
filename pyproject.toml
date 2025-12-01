@@ -56,7 +56,7 @@ dependencies = [
     "googlemaps == 4.10.0",
     
     # Specialized
-    "cbsyst == 0.4.9",
+    "cbsyst == 0.4.10",
     ]
 repository = "https://github.com/orlando-code/NREE_persistence_reef_structures_meta_analysis/"
 documentation = "https://github.com/orlando-code/NREE_persistence_reef_structures_meta_analysis/README.md"
