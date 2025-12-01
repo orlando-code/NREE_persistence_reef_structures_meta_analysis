@@ -27,15 +27,18 @@ python -m pip install --upgrade pip
 python -m pip install .    # Installs dependencies from pyproject.toml
 ```
 
-Alternatively, you can use `requirements.txt`:
+Alternatively, you can use `requirements.txt` within the virtual environment:
 ```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
 #### **Option 2: Using `conda`**
 If you prefer `conda` (such as Anaconda or Miniconda), you can use the `environment.yml` file:
 
-```bash ,/
+```bash
 conda env create -f environment.yml
 conda activate calc_meta
 ```
@@ -52,6 +55,7 @@ Or using `requirements.txt`:
 ```bash
 conda create -n calc_meta
 conda activate calc_meta
+conda install pip
 pip install -r requirements.txt
 ```
 
@@ -59,7 +63,6 @@ pip install -r requirements.txt
 > - The command `pip install .` reads your `pyproject.toml` and installs all runtime dependencies with exact versions.
 > - The `requirements.txt` file provides an alternative installation method with the same exact versions.
 > - The `environment.yml` file can be used to recreate the exact `conda` environment used for the analysis.
-> - For development dependencies, use `pip install -e ".[dev]"`.
 > - If you run into installation issues with packages that need compilation (e.g., `rpy2`, `scipy`, `geopandas`), try installing the relevant dependencies via `conda` first, then run `pip install .` again.
 > - **Do not modify version numbers** in dependency files if you want to reproduce the paper's results exactly.
 
