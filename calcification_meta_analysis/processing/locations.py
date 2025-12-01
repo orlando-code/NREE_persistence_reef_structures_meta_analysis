@@ -165,9 +165,9 @@ def save_locations_information(df: pd.DataFrame) -> None:
             ["doi", "location", "latitude", "longitude"]
         ].set_index("doi")
         file_ops.write_yaml(locs_df.to_dict(orient="index"), yaml_path)
-        logger.info(f"Saved locations (yaml)to {yaml_path}")
+        logger.info(f"Saved locations (yaml)to {'/'.join(yaml_path.parts[-3:])}")
         locs_df.to_csv(csv_path, index=True, index_label="doi")
-        logger.info(f"Saved locations (csv) to {csv_path}")
+        logger.info(f"Saved locations (csv) to {'/'.join(csv_path.parts[-3:])}")
 
 
 def dms_to_decimal(
