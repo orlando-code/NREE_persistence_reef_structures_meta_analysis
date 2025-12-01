@@ -35,7 +35,7 @@ python -m pip install -r requirements.txt
 #### **Option 2: Using `conda`**
 If you prefer `conda` (such as Anaconda or Miniconda), you can use the `environment.yml` file:
 
-```bash
+```bash ,/
 conda env create -f environment.yml
 conda activate calc_meta
 ```
@@ -44,6 +44,7 @@ Or create a new environment and install via pip:
 ```bash
 conda create -n calc_meta
 conda activate calc_meta
+conda install pip
 pip install .              # Installs dependencies from pyproject.toml
 ```
 
