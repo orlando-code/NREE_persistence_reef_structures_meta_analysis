@@ -429,7 +429,9 @@ def extrapolate_df(
     return combined_df
 
 
-def calculate_extreme_climatology_values(climatology_df: pd.DataFrame) -> pd.DataFrame:
+def calculate_extreme_climatology_values(
+    climatology_df: pd.DataFrame,
+) -> tuple[float, float, float, float]:
     """
     Calculate the extreme climatology values for a dataframe.
     """
