@@ -247,5 +247,6 @@ dependencies:
   - zstandard=0.25.0
   - zstd=1.5.7
   - pip:
+      - -e .
       - rpy2-rinterface==3.6.3
       - rpy2-robjects==3.6.3
