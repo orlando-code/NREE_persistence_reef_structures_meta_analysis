@@ -1,11 +1,11 @@
 doi,location,latitude,longitude
 10.1111/jpy.13290,"Lizard Island, GBR, Australia",-14.692277777777779,145.45923611111112
-10.1038/s41598-019-40620-8-LOC-A,"Mo'orea, French Polynesia",-17.477919444444442,-149.8396666666667
-10.1038/s41598-019-40620-8-LOC-B,"Key Largo, Florida, US",25.02,-80.49
+10.1038/s41598-019-40620-8,"Mo'orea, French Polynesia",-17.477919444444442,-149.8396666666667
+10.3354/meps10981,"Key Largo, Florida, US",25.02,-80.49
 10.3354/meps11591,"Boca Raton, Florida, US",26.327,-80.07216666666666
 10.3354/meps09309,Palmyra Atoll,5.8885026,-162.0786656
 10.1007/s13131-022-2037-x,South China Sea,17.05,111.3
-10.1016/j.chemgeo.2018.09.004,"Fiji, UK aquarium",55.378051,-3.435973
+10.1016/j.chemgeo.2018.09.004,Fiji,-17.713371,178.065032
 10.1007/s00338-019-01775-y,"Heron Island, GBR, Australia",-23.433333333333334,151.86666666666667
 10.1098/rsos.220760,"Island Point, Panama",9.34906,-82.2583
 10.1093/icesjms/fsaa015,"Mo'orea, French Polynesia",-17.5388435,-149.8295234
@@ -14,6 +14,7 @@ doi,location,latitude,longitude
 10.1016/j.ecochg.2021.100016-LOC-A,"Almirante Bay, Panama",9.3326,-82.2164
 10.1016/j.ecochg.2021.100016-LOC-B,"Almirante Bay, Panama",9.22025,-82.3231
 10.1371/journal.pone.0139223,"Heron Island, GBR, Australia",-23.55,151.9
+10.1016/j.marmicro.2023.102232,"Ikei Island, Uruma, Okinawa, Japan",26.393366,127.9969928
 10.1038/s41598-022-06896-z,"Hawaii, various",19.8986819,-155.6658568
 10.1016/j.jembe.2020.151489,Florida Keys Reef Tract,24.62055,-81.37078
 10.1007/s00227-022-04071-6,Southern Taiwan,21.942999999999998,120.75550000000001
@@ -61,9 +62,7 @@ doi,location,latitude,longitude
 10.3389/fmars.2021.660196,"Yonge Reef, GBR, Australia",-14.625583333333333,145.63505555555554
 10.1016/j.jembe.2017.01.003-LOC-A,"Rock Island Reefs, Palau",7.268,134.522
 10.1016/j.jembe.2017.01.003-LOC-B,"Rock Island Reefs, Palau",7.324,134.493
-10.1007/s00338-017-1567-8,Cairns Marine Ltd - aquarium,-16.8723018,145.7379135
 10.7717/peerj.5347,"Kane'ohe Bay, Hawai'i",21.4,-157.8
-10.1016/j.ecolind.2018.11.011,Aquarium (Portugal),39.39987199999999,-8.224454
 10.1242/jeb.217000,"Mo'orea, French Polynesia",-17.533333333333335,-149.83333333333334
 10.1007/s00338-015-1342-7,"Basile Island, Houtman Abrolhos Islands, Western Australia",-28.874992,113.9628469
 10.1126/sciadv.aba9958,"Aquaria, from Fiji",-17.713371,178.065032
@@ -84,12 +83,12 @@ doi,location,latitude,longitude
 10.1002/lno.11863,southern Belize MBRS,16.189869833333333,-88.57276
 10.1007/s00338-021-02170-2,Fiji,-17.713371,178.065032
 10.1093/icesjms/fsw026,Caribbean Sea,19.698333333333334,-80.06027777777777
+10.1242/jeb.123018,Hawaii,19.8986819,-155.6658568
 10.1111/j.1365-2486.2011.02404.x,"Little Grecian, Key Largo, Florida",25.119013,-80.3011638
 10.1073/pnas.1007273107,"Elbow Reef/Sand Island, Upper Florida Keys, US",27.6648274,-81.5157535
 10.1016/j.jembe.2010.11.009,"Taboga Island, Panama",8.787191199999999,-79.55753419999999
 10.1073/pnas.0804478105,"reef slope, Heron Island, Australia",-23.4422976,151.9148004
 10.1007/s00338-016-1405-4,"reef flat, Moku o Lo‘e, Hawaii",21.4339449,-157.7880509
-doi:10.1093/icesjms/fsw026,"Little Cayman Island, Caribbean",19.698333333333334,-80.06027777777777
 10.1016/j.marenvres.2020.105107,"lagoon, Lizard Island, Australia",-14.692277777777779,145.45923611111112
 10.1371/journal.pone.0122898,"Îlot Maître, New Caledonia",-22.328366666666668,166.41043333333334
 10.1093/icesjms/fsv162,"Orpheus and Pelorus Islands, Palm Group, Australia",-18.5485656,146.4971995
@@ -140,7 +139,6 @@ doi:10.1093/icesjms/fsw026,"Little Cayman Island, Caribbean",19.698333333333334,
 10.1016/j.marenvres.2013.10.010,"Sesoko Island, Okinawa, Japan",26.6451498,127.8644948
 10.1016/j.marenvres.2015.05.004,"Bise, Okinawa, Japan",26.709444444444443,127.87944444444443
 10.1016/j.gca.2010.05.023,"Eilat, Israel",29.5,34.916666666666664
-10.1098/rspb.2002.2212,"Aquarium, Monaco",43.7308564,7.4253881
 10.1371/journal.pone.0160268,"Puerto Morelos reef lagoon, Mexican Caribbean",20.866666666666667,-86.86666666666666
 https://api.semanticscholar.org/CorpusID:56267143,"lagoon of Moorea, French Polynesia",-17.5388435,-149.8295234
 10.1016/j.envpol.2020.115344,"Bolinao, Pangasinan, Philippines",16.428611111111113,119.93055555555556

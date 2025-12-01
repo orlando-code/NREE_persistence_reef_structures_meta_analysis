@@ -14,10 +14,6 @@ Acropora digitifera:
   core_grouping: Coral
   family: Acroporidae
   functional_group: Hard coral
-Acropora formosa:
-  core_grouping: Coral
-  family: Acroporidae
-  functional_group: Hard coral
 Acropora hyacinthus:
   core_grouping: Coral
   family: Acroporidae
@@ -67,10 +63,6 @@ Acropora tenuis:
   family: Acroporidae
   functional_group: Hard coral
 Acropora variabilis:
-  core_grouping: Coral
-  family: Acroporidae
-  functional_group: Hard coral
-Acropora verweyi:
   core_grouping: Coral
   family: Acroporidae
   functional_group: Hard coral
@@ -134,10 +126,6 @@ Dichotomaria marginata:
   core_grouping: Other algae
   family: Galaxauraceae
   functional_group: Fleshy algae
-Echinopora lamellosa:
-  core_grouping: Coral
-  family: Merulinidae
-  functional_group: Hard coral
 Favites colemani:
   core_grouping: Coral
   family: Merulinidae
@@ -294,10 +282,6 @@ Montipora capitata:
   core_grouping: Coral
   family: Acroporidae
   functional_group: Hard coral
-Montipora capricornis:
-  core_grouping: Coral
-  family: Acroporidae
-  functional_group: Hard coral
 Montipora digitata:
   core_grouping: Coral
   family: Acroporidae
@@ -442,10 +426,6 @@ Porolithon onkodes:
   core_grouping: CCA
   family: Porolithaceae
   functional_group: Crustose coralline algae
-Psammocora contigua:
-  core_grouping: Coral
-  family: Psammocoridae
-  functional_group: Hard coral
 Psammocora sp.:
   core_grouping: Coral
   family: Psammocoridae

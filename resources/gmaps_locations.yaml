@@ -1,18 +1,6 @@
 Aquaria, from Fiji:
 - -17.713371
 - 178.065032
-Aquarium:
-- null
-- null
-Aquarium (Portugal):
-- 39.39987199999999
-- -8.224454
-Aquarium, Mediterranean:
-- null
-- null
-Aquarium, Monaco:
-- 43.7308564
-- 7.4253881
 "Bahi\u0301a Almirante, Bocas del Toro archipelago, Panama, Carribean":
 - 9.3326402
 - -82.2497559
@@ -34,9 +22,6 @@ Bourake, New Caledonia:
 Broad Key, Florida, US:
 - 25.3512256
 - -80.2650522
-Cairns Marine Ltd - aquarium:
-- -16.8723018
-- 145.7379135
 Cairns, GBR, Australia:
 - -16.9203476
 - 145.7709529
@@ -70,9 +55,6 @@ Elliot Key, Biscayne National Park, Florida, US:
 Fiji:
 - -17.713371
 - 178.065032
-Fiji, UK aquarium:
-- 55.378051
-- -3.435973
 Florida:
 - 27.6648274
 - -81.5157535
@@ -118,6 +100,9 @@ Hawaii:
 Hawaii, various:
 - 19.8986819
 - -155.6658568
+Ikei Island, Uruma, Okinawa, Japan:
+- 26.393366
+- 127.9969928
 Indo-Pacific:
 - null
 - null
@@ -200,8 +185,8 @@ Panwa Cape, Thailand:
 - 7.8078263
 - 98.40916759999999
 Puerto Morelos Reef National Park, Mexico:
-- 20.8501541
-- -86.87458219999999
+- 20.8478084
+- -86.87553419999999
 Puerto Morelos reef lagoon, Mexican Caribbean:
 - 20.8478084
 - -86.87553419999999
@@ -286,9 +271,6 @@ reef slope, Heron Island, Australia:
 southern Belize MBRS:
 - 17.189877
 - -88.49765
-Ikei Island, Uruma, Okinawa, Japan:
-- 26.393366
-- 127.9969928
 Cheeca Rocks, FL, USA:
 - 24.90404297899941
 - -80.61690749204298
@@ -320,5 +302,5 @@ Saint Eustatius, Netherland Antilles:
 - 17.4890306
 - -62.973555
 Smithsonian Tropical Research Institute, Bocas del Toro, Panama:
-- 9.3407804
-- -82.2408032
+- 9.351872600000002
+- -82.25676299999999

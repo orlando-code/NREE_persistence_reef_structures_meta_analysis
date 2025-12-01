@@ -66,10 +66,6 @@
   latitude: -17.489856
   location: French Polynesia
   longitude: -149.825875
-10.1007/s00338-017-1567-8:
-  latitude: -16.8723018
-  location: Cairns Marine Ltd - aquarium
-  longitude: 145.7379135
 10.1007/s00338-017-1634-1:
   latitude: 18.2
   location: Luhuitou fringing reef, Hainan Island, China
@@ -131,9 +127,9 @@
   location: South China Sea
   longitude: 111.3
 10.1016/j.chemgeo.2018.09.004:
-  latitude: 55.378051
-  location: Fiji, UK aquarium
-  longitude: -3.435973
+  latitude: -17.713371
+  location: Fiji
+  longitude: 178.065032
 10.1016/j.ecochg.2021.100016-LOC-A:
   latitude: 9.3326
   location: Almirante Bay, Panama
@@ -142,10 +138,6 @@
   latitude: 9.22025
   location: Almirante Bay, Panama
   longitude: -82.3231
-10.1016/j.ecolind.2018.11.011:
-  latitude: 39.39987199999999
-  location: Aquarium (Portugal)
-  longitude: -8.224454
 10.1016/j.ecss.2009.03.038:
   latitude: -6.1436347
   location: Chwaka Bay, Zanzibar
@@ -230,6 +222,10 @@
   latitude: 26.7025
   location: Okinawa, Japan
   longitude: 127.87778333333333
+10.1016/j.marmicro.2023.102232:
+  latitude: 26.393366
+  location: Ikei Island, Uruma, Okinawa, Japan
+  longitude: 127.9969928
 10.1016/j.marpolbul.2014.09.037:
   latitude: 26.6451498
   location: fringing reef, Sesoko Island, Okinawa, Japan
@@ -246,14 +242,10 @@
   latitude: -17.489856
   location: Moorea
   longitude: -149.825875
-10.1038/s41598-019-40620-8-LOC-A:
+10.1038/s41598-019-40620-8:
   latitude: -17.477919444444442
   location: Mo'orea, French Polynesia
   longitude: -149.8396666666667
-10.1038/s41598-019-40620-8-LOC-B:
-  latitude: 25.02
-  location: Key Largo, Florida, US
-  longitude: -80.49
 10.1038/s41598-019-56313-1-LOC-A:
   latitude: 21.35506872187486
   location: Kahe, Hawaii
@@ -342,10 +334,6 @@
   latitude: 9.34906
   location: Island Point, Panama
   longitude: -82.2583
-10.1098/rspb.2002.2212:
-  latitude: 43.7308564
-  location: Aquarium, Monaco
-  longitude: 7.4253881
 10.1098/rspb.2014.1339-LOC-A:
   latitude: 21.4398165
   location: Kaneohe Bay, Hawaii
@@ -450,6 +438,10 @@
   latitude: 18.23986111111111
   location: Hainan Island, China
   longitude: 109.60111111111111
+10.1242/jeb.123018:
+  latitude: 19.8986819
+  location: Hawaii
+  longitude: -155.6658568
 10.1242/jeb.152488:
   latitude: -17.47770155229839
   location: outer reef, north shore, Moorea, French Polynesia
@@ -506,6 +498,10 @@
   latitude: 18.15
   location: Sanya Bay, Hainan Province, China
   longitude: 109.3
+10.3354/meps10981:
+  latitude: 25.02
+  location: Key Largo, Florida, US
+  longitude: -80.49
 10.3354/meps11512-LOC-A:
   latitude: -17.4769
   location: back reef, Moorea, French Polynesia
@@ -626,10 +622,6 @@
   latitude: 21.4
   location: Kane'ohe Bay, Hawai'i
   longitude: -157.8
-doi:10.1093/icesjms/fsw026:
-  latitude: 19.698333333333334
-  location: Little Cayman Island, Caribbean
-  longitude: -80.06027777777777
 https://api.semanticscholar.org/CorpusID:56267143:
   latitude: -17.5388435
   location: lagoon of Moorea, French Polynesia
